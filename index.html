@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A Speakeasy Murder — Character Connections</title>
+<style>
+:root {
+  --panel-bg: rgba(255,255,255,0.97);
+  --panel-border: #bbb;
+  --panel-radius: 10px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #fff;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+
+/* ── Layout ── */
+#app { display: flex; flex: 1; overflow: hidden; position: relative; }
+#graph-wrap { flex: 1; position: relative; overflow: hidden; }
+svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
+
+/* ── Invitee Panel ── */
+#invitee-panel {
+  width: 230px;
+  flex-shrink: 0;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s, opacity 0.25s;
+  z-index: 100;
+}
+#invitee-panel.hidden { transform: translateX(100%); opacity: 0; pointer-events: none; position: absolute; right: 0; top: 0; bottom: 0; }
+#invitee-header {
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid #ddd;
+  font-weight: 700;
+  font-size: 13px;
+  color: #111;
+  flex-shrink: 0;
+}
+#invitee-header p { font-size: 10px; color: #888; font-weight: 400; margin-top: 3px; line-height: 1.4; }
+#invitee-add-row {
+  display: flex;
+  gap: 6px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+}
+#invitee-add-row input {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  outline: none;
+  font-family: inherit;
+}
+#invitee-add-row input:focus { border-color: #7F77DD; }
+#invitee-add-row button {
+  background: #7F77DD;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  font-weight: 300;
+}
+#invitee-add-row button:hover { background: #6860c8; }
+
+#invitee-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px;
+}
+.invitee-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f5f4ff;
+  border: 1.5px solid #c8c4f0;
+  border-radius: 7px;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  cursor: grab;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2a2560;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  transition: box-shadow 0.15s, background 0.15s;
+}
+.invitee-item:active { cursor: grabbing; }
+.invitee-item.assigned { background: #eef7ee; border-color: #8ac88a; color: #1a4d1a; }
+.invitee-item.dragging { opacity: 0.4; }
+.invitee-item .inv-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.invitee-item .inv-char { font-size: 10px; font-weight: 400; color: #666; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.invitee-item .inv-remove {
+  background: none; border: none; color: #bbb; cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 0 0 0 6px; flex-shrink: 0;
+}
+.invitee-item .inv-remove:hover { color: #e04a4a; }
+.inv-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* ── Saved Assignments ── */
+#saved-section {
+  border-top: 1px solid #ddd;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 40%;
+}
+#saved-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px 7px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#saved-header span { font-size: 12px; font-weight: 700; color: #333; }
+#saved-header .saved-toggle { font-size: 11px; color: #999; transition: transform 0.2s; }
+#saved-header .saved-toggle.open { transform: rotate(180deg); }
+#saved-body { display: flex; flex-direction: column; overflow: hidden; }
+#saved-body.collapsed { display: none; }
+#save-current-row {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px 8px;
+  flex-shrink: 0;
+}
+#save-current-row input {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  outline: none;
+  font-family: inherit;
+}
+#save-current-row input:focus { border-color: #EF9F27; }
+#save-current-row button {
+  background: #EF9F27;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#save-current-row button:hover { background: #d08a18; }
+#saved-list {
+  overflow-y: auto;
+  padding: 0 8px 8px;
+  flex: 1;
+}
+.saved-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fffaf0;
+  border: 1.5px solid #f0d898;
+  border-radius: 7px;
+  padding: 6px 8px;
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+.saved-item.active-snap { border-color: #EF9F27; background: #fff5d6; }
+.saved-item-name {
+  flex: 1;
+  font-weight: 600;
+  color: #5a3a00;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+.saved-item-name sub { font-size: 9px; font-weight: 400; color: #aaa; margin-left: 3px; }
+.saved-item-load {
+  background: #EF9F27; color: #fff; border: none;
+  border-radius: 5px; padding: 3px 8px; font-size: 11px;
+  font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.saved-item-load:hover { background: #d08a18; }
+.saved-item-del {
+  background: none; border: none; color: #ccc;
+  cursor: pointer; font-size: 15px; line-height: 1; padding: 0; flex-shrink: 0;
+}
+.saved-item-del:hover { color: #e04a4a; }
+#saved-empty { font-size: 11px; color: #bbb; padding: 4px 4px 8px; text-align: center; }
+
+/* ── Drag ghost ── */
+#drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  background: #7F77DD;
+  color: #fff;
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.9;
+  z-index: 9999;
+  display: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+/* ── Drop highlight ── */
+.node-drop-target circle { filter: drop-shadow(0 0 8px #7F77DD) brightness(1.15); }
+
+/* ── Overlay panels ── */
+.panel {
+  position: absolute;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--panel-radius);
+  padding: 14px 18px;
+  font-size: 12px;
+  backdrop-filter: blur(4px);
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 50;
+}
+.panel.hidden { opacity: 0; pointer-events: none; transform: scale(0.97); }
+#legend { top: 16px; right: 16px; min-width: 200px; }
+#tier-filter { top: 16px; left: 16px; }
+#hint-bar {
+  position: absolute;
+  bottom: 12px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 50;
+}
+#hint-bar.hidden { opacity: 0; }
+
+/* ── Toolbar ── */
+#toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fafafa;
+  flex-shrink: 0;
+  align-items: center;
+}
+#toolbar h1 { font-size: 13px; font-weight: 700; color: #222; flex: 1; }
+.tb-btn {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #333;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.tb-btn:hover { background: #f0f0f0; }
+.tb-btn.active { background: #111; color: #fff; border-color: #111; }
+
+/* ── Legend ── */
+#legend h3, #tier-filter h3 { font-size: 13px; font-weight: 700; margin-bottom: 10px; color: #111; }
+.ls-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #777; margin-bottom: 6px; }
+.ls-section { margin-bottom: 11px; }
+.ls-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: #222; font-size: 12px; }
+.ls-swatch { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
+.ls-line { width: 26px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+.tier-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: #222; cursor: pointer; font-size: 12px; }
+.tier-row input { cursor: pointer; accent-color: #7F77DD; }
+
+/* ── Tooltip ── */
+#tooltip {
+  position: fixed;
+  background: #fff;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  max-width: 260px;
+  pointer-events: none;
+  display: none;
+  z-index: 9000;
+  line-height: 1.6;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+#tooltip .tt-name  { font-weight: 700; font-size: 13px; color: #111; margin-bottom: 2px; }
+#tooltip .tt-group { color: #666; font-size: 11px; margin-bottom: 3px; }
+#tooltip .tt-desc  { color: #333; font-size: 11px; }
+#tooltip .tt-inv   { color: #2d7a00; font-size: 11px; font-weight: 600; margin-top: 4px; }
+
+/* ── Graph link/node styles ── */
+.link-ally    { stroke: #2d7a00; stroke-opacity: 0.65; fill: none; }
+.link-enemy   { stroke: #111111; stroke-opacity: 0.7;  fill: none; }
+.link-romance { stroke: #c0175d; stroke-opacity: 0.85; fill: none; }
+.dimmed       { opacity: 0.06; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>🎷 A Speakeasy Murder — Character Map</h1>
+  <button class="tb-btn" id="btn-ui">Hide UI</button>
+  <button class="tb-btn" id="btn-guests">Hide Guests</button>
+  <button class="tb-btn" id="btn-clear-assignments">Clear Assignments</button>
+</div>
+
+<div id="app">
+  <div id="graph-wrap">
+    <svg id="graph"></svg>
+
+    <div class="panel" id="tier-filter">
+      <h3>Guest count tier</h3>
+      <label class="tier-row"><input type="checkbox" class="tier-cb" value="1" checked> Tier 1 — Core 15</label>
+      <label class="tier-row"><input type="checkbox" class="tier-cb" value="2" checked> Tier 2 — 16–19 guests</label>
+      <label class="tier-row"><input type="checkbox" class="tier-cb" value="3" checked> Tier 3 — 20–24 guests</label>
+      <label class="tier-row"><input type="checkbox" class="tier-cb" value="4" checked> Tier 4 — 25–29 guests</label>
+      <label class="tier-row"><input type="checkbox" class="tier-cb" value="5" checked> Tier 5 — 30–32 guests</label>
+    </div>
+
+    <div class="panel" id="legend">
+      <h3>Key</h3>
+      <div class="ls-section">
+        <div class="ls-title">Node fill — group</div>
+        <div class="ls-row"><div class="ls-swatch" style="background:#EF9F27"></div>Management</div>
+        <div class="ls-row"><div class="ls-swatch" style="background:#1D9E75"></div>Staff</div>
+        <div class="ls-row"><div class="ls-swatch" style="background:#7F77DD"></div>Clientele</div>
+        <div class="ls-row"><div class="ls-swatch" style="background:#888780"></div>Special</div>
+      </div>
+      <div class="ls-section">
+        <div class="ls-title">Node outline — gender</div>
+        <div class="ls-row"><div class="ls-swatch" style="border:3px solid #E24B4A;background:transparent"></div>Male</div>
+        <div class="ls-row"><div class="ls-swatch" style="border:3px solid #378ADD;background:transparent"></div>Female</div>
+        <div class="ls-row"><div class="ls-swatch" style="border:3px solid #444;background:transparent"></div>Either</div>
+      </div>
+      <div class="ls-section" style="margin-bottom:0">
+        <div class="ls-title">Edge — relationship</div>
+        <div class="ls-row"><div class="ls-line" style="background:#c0175d"></div>Romantic</div>
+        <div class="ls-row"><div class="ls-line" style="background:#2d7a00"></div>Ally</div>
+        <div class="ls-row"><div class="ls-line" style="background:#111"></div>Enemy</div>
+      </div>
+    </div>
+
+    <div id="hint-bar">Scroll to zoom &nbsp;·&nbsp; Drag to pan &nbsp;·&nbsp; Hover node to highlight &nbsp;·&nbsp; Drag guest → character to assign</div>
+  </div>
+
+  <!-- Invitee panel -->
+  <div id="invitee-panel">
+    <div id="invitee-header">
+      Invitees
+      <p>Add guests, then drag onto a character node to assign them a role.</p>
+    </div>
+    <div id="invitee-add-row">
+      <input id="invitee-input" type="text" placeholder="Guest name…" maxlength="40">
+      <button id="invitee-add-btn" title="Add guest">+</button>
+    </div>
+    <div id="invitee-list"></div>
+
+    <!-- Saved assignments section -->
+    <div id="saved-section">
+      <div id="saved-header">
+        <span>💾 Saved arrangements</span>
+        <span class="saved-toggle open">▲</span>
+      </div>
+      <div id="saved-body">
+        <div id="save-current-row">
+          <input id="save-name-input" type="text" placeholder="Arrangement name…" maxlength="40">
+          <button id="save-now-btn">Save</button>
+        </div>
+        <div id="saved-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+<div id="drag-ghost"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════
+const NODES_RAW = [
+  { id:"Stan",         label:"Stan",          fullName:"Fat Stan Belluccio",              gender:"Male",   group:"Management", tier:1, desc:"The big boss and speakeasy owner — crime-lord of the West Side Gang" },
+  { id:"Florence",     label:"Florence",      fullName:"Florence Belluccio",              gender:"Female", group:"Management", tier:1, desc:"Stan's wife — the real power behind the throne" },
+  { id:"Jimmy",        label:"Jimmy",         fullName:"Jimmy 'The Weasel' Smith",        gender:"Male",   group:"Management", tier:3, desc:"Fat Stan's right-hand man" },
+  { id:"Alicia",       label:"Alicia",        fullName:"Alicia 'Angel-Face' O'Riley",     gender:"Female", group:"Management", tier:5, desc:"Florence's sister — helps with management, rather vicious" },
+  { id:"Tommy",        label:"Tommy",         fullName:"Tommy 'The Horse' Davies",        gender:"Male",   group:"Management", tier:5, desc:"One of Stan's cronies — a henchman" },
+  { id:"Pickles",      label:"Pickles",       fullName:"Pickles",                         gender:"Either", group:"Staff",      tier:1, desc:"The all-around dogsbody and cleaner" },
+  { id:"Tony",         label:"Tony",          fullName:"Tony",                            gender:"Male",   group:"Staff",      tier:1, desc:"The bartender — runs the bootlegging operation for Stan" },
+  { id:"Sammy",        label:"Sammy",         fullName:"Sammy Snake-Eyes",                gender:"Either", group:"Staff",      tier:1, desc:"The poker-faced head croupier" },
+  { id:"Al",           label:"Al",            fullName:"Al",                              gender:"Male",   group:"Staff",      tier:1, desc:"The pianist — and is the murderer" },
+  { id:"Sasha",        label:"Sasha",         fullName:"Sasha White",                     gender:"Either", group:"Staff",      tier:1, desc:"The double-bass player — always wears shades" },
+  { id:"Bobby",        label:"Bobby",         fullName:"Bobby White",                     gender:"Either", group:"Staff",      tier:4, desc:"The saxophone player — also wears shades" },
+  { id:"Lola",         label:"Lola",          fullName:"Lola",                            gender:"Female", group:"Staff",      tier:1, desc:"A singer and the star of the speakeasy" },
+  { id:"Mitzy",        label:"Mitzy",         fullName:"Mitzy",                           gender:"Female", group:"Staff",      tier:1, desc:"Lola's backup singer and dancing girl — secretly a cocaine addict" },
+  { id:"Tillie",       label:"Tillie",        fullName:"Tillie",                          gender:"Female", group:"Staff",      tier:1, desc:"A dancing girl" },
+  { id:"Phyllis",      label:"Phyllis",       fullName:"Phyllis",                         gender:"Female", group:"Staff",      tier:3, desc:"A dancing girl" },
+  { id:"Pilkington",   label:"Pilkington",    fullName:"Officer Pilkington",              gender:"Male",   group:"Clientele",  tier:1, desc:"A rotten cop with a drink problem" },
+  { id:"Velma",        label:"Velma",         fullName:"Velma Du Bois",                   gender:"Female", group:"Clientele",  tier:1, desc:"A notorious socialite — actually a ruthless assassin for Linguini" },
+  { id:"Linguini",     label:"Linguini",      fullName:"Alfonso 'Linguini' Marino",       gender:"Male",   group:"Clientele",  tier:1, desc:"A well-known gangster and leader of the East Side Gang" },
+  { id:"Sugar",        label:"Sugar",         fullName:"Sugar Sands",                     gender:"Female", group:"Clientele",  tier:3, desc:"A famous singer and Linguini's current squeeze" },
+  { id:"Benny",        label:"Benny",         fullName:"Benny 'Ankles' Johnson",          gender:"Male",   group:"Clientele",  tier:3, desc:"Linguini's right-hand man" },
+  { id:"Mayor",        label:"Mayor",         fullName:"Mayor Trelawney",                 gender:"Male",   group:"Clientele",  tier:1, desc:"A politician — actually a corrupt alcoholic with a gambling addiction" },
+  { id:"Kit",          label:"Kit",           fullName:"Kit James",                       gender:"Either", group:"Clientele",  tier:1, desc:"The Mayor's secretary — actually an experienced killer" },
+  { id:"Sofia",        label:"Sofia",         fullName:"Sofia Meers",                     gender:"Female", group:"Clientele",  tier:2, desc:"The Mayor's companion — actually cocaine overlord The Chimera" },
+  { id:"Trilby",       label:"Trilby",        fullName:"Trilby Madison",                  gender:"Either", group:"Clientele",  tier:2, desc:"A fashionable writer — actually an undercover Bureau of Investigation agent" },
+  { id:"Laurie",       label:"Laurie",        fullName:"Laurie Evans",                    gender:"Either", group:"Clientele",  tier:4, desc:"Trilby's co-writer — also an undercover Bureau of Investigation agent" },
+  { id:"Oswald",       label:"Oswald",        fullName:"Oswald Murphy",                   gender:"Male",   group:"Clientele",  tier:2, desc:"A Hollywood film producer — secretly cocaine supplier Balthazar" },
+  { id:"Ava",          label:"Ava",           fullName:"Ava Monroe",                      gender:"Female", group:"Clientele",  tier:4, desc:"A star of the silent pictures in Hollywood" },
+  { id:"JD",           label:"J.D.",          fullName:"J. D. Oakey",                     gender:"Either", group:"Clientele",  tier:5, desc:"Oswald's personal assistant" },
+  { id:"Reno",         label:"Reno",          fullName:"Reno Edwards",                    gender:"Either", group:"Clientele",  tier:2, desc:"A newcomer — actually an undercover Temperance League member" },
+  { id:"LadyPatricia", label:"Lady Patricia", fullName:"Lady Patricia Fortescue-Smythe", gender:"Female", group:"Clientele",  tier:4, desc:"An ageing English aristocrat — actually an alcoholic ex-showgirl" },
+  { id:"Sly",          label:"Sly",           fullName:"Sly Swanson",                     gender:"Male",   group:"Clientele",  tier:4, desc:"A debonair gambler — secretly a confidence trickster and cocaine addict" },
+  { id:"Roxy",         label:"Roxy",          fullName:"Roxy MacDougall",                 gender:"Either", group:"Clientele",  tier:3, desc:"A rich client — actually a money-launderer and cocaine dealer" },
+  { id:"BoI",          label:"Bureau of\nInvestigation", fullName:"Bureau of Investigation", gender:"Either", group:"Special", tier:0, desc:"The federal agents cracking down on Chicago crime" },
+];
+
+const EDGES_RAW = [
+  {source:"Stan",target:"Mitzy",type:"romance"},{source:"Jimmy",target:"Phyllis",type:"romance"},
+  {source:"Tony",target:"Tillie",type:"romance"},{source:"Tony",target:"Mitzy",type:"romance"},
+  {source:"Al",target:"Lola",type:"romance"},{source:"Mayor",target:"Sofia",type:"romance"},
+  {source:"Mayor",target:"LadyPatricia",type:"romance"},{source:"Linguini",target:"Sugar",type:"romance"},
+  {source:"Benny",target:"Velma",type:"romance"},{source:"Ava",target:"Oswald",type:"romance"},
+  {source:"Stan",target:"Florence",type:"ally"},{source:"Stan",target:"Jimmy",type:"ally"},
+  {source:"Stan",target:"Tommy",type:"ally"},{source:"Stan",target:"Sammy",type:"ally"},
+  {source:"Stan",target:"Tony",type:"ally"},{source:"Stan",target:"Pickles",type:"ally"},
+  {source:"Stan",target:"Roxy",type:"ally"},{source:"Florence",target:"Alicia",type:"ally"},
+  {source:"Florence",target:"Jimmy",type:"ally"},{source:"Florence",target:"Tommy",type:"ally"},
+  {source:"Florence",target:"Sammy",type:"ally"},{source:"Florence",target:"Tony",type:"ally"},
+  {source:"Florence",target:"Pickles",type:"ally"},{source:"Florence",target:"Roxy",type:"ally"},
+  {source:"Jimmy",target:"Tommy",type:"ally"},{source:"Jimmy",target:"Sammy",type:"ally"},
+  {source:"Jimmy",target:"Tony",type:"ally"},{source:"Jimmy",target:"Roxy",type:"ally"},
+  {source:"Alicia",target:"Tommy",type:"ally"},{source:"Alicia",target:"Pickles",type:"ally"},
+  {source:"Tommy",target:"Sammy",type:"ally"},{source:"Tommy",target:"Tony",type:"ally"},
+  {source:"Pickles",target:"Velma",type:"ally"},{source:"Pickles",target:"Al",type:"ally"},
+  {source:"Pickles",target:"Tillie",type:"ally"},{source:"Tony",target:"Sammy",type:"ally"},
+  {source:"Tony",target:"Roxy",type:"ally"},{source:"Sammy",target:"Roxy",type:"ally"},
+  {source:"Al",target:"Lola",type:"ally"},{source:"Al",target:"Sasha",type:"ally"},
+  {source:"Al",target:"Bobby",type:"ally"},{source:"Sasha",target:"Bobby",type:"ally"},
+  {source:"Sasha",target:"Lola",type:"ally"},{source:"Bobby",target:"Lola",type:"ally"},
+  {source:"Tillie",target:"Sammy",type:"ally"},{source:"Tillie",target:"Velma",type:"ally"},
+  {source:"Tillie",target:"Al",type:"ally"},{source:"Phyllis",target:"Jimmy",type:"ally"},
+  {source:"Phyllis",target:"Florence",type:"ally"},{source:"Phyllis",target:"Stan",type:"ally"},
+  {source:"Pilkington",target:"Stan",type:"ally"},{source:"Pilkington",target:"Florence",type:"ally"},
+  {source:"Pilkington",target:"Kit",type:"ally"},{source:"Pilkington",target:"Sofia",type:"ally"},
+  {source:"Velma",target:"Linguini",type:"ally"},{source:"Velma",target:"Benny",type:"ally"},
+  {source:"Velma",target:"Kit",type:"ally"},{source:"Linguini",target:"Benny",type:"ally"},
+  {source:"Linguini",target:"Sugar",type:"ally"},{source:"Linguini",target:"LadyPatricia",type:"ally"},
+  {source:"Sugar",target:"Benny",type:"ally"},{source:"Sugar",target:"JD",type:"ally"},
+  {source:"Mayor",target:"Kit",type:"ally"},{source:"Mayor",target:"Sofia",type:"ally"},
+  {source:"Mayor",target:"LadyPatricia",type:"ally"},{source:"Mayor",target:"Pilkington",type:"ally"},
+  {source:"Kit",target:"Velma",type:"ally"},{source:"Sofia",target:"Roxy",type:"ally"},
+  {source:"Sofia",target:"Linguini",type:"ally"},{source:"Trilby",target:"Laurie",type:"ally"},
+  {source:"Trilby",target:"Reno",type:"ally"},{source:"Laurie",target:"Reno",type:"ally"},
+  {source:"Oswald",target:"JD",type:"ally"},{source:"Oswald",target:"Ava",type:"ally"},
+  {source:"Ava",target:"JD",type:"ally"},{source:"Reno",target:"Pilkington",type:"ally"},
+  {source:"LadyPatricia",target:"Velma",type:"ally"},{source:"Roxy",target:"Sofia",type:"ally"},
+  {source:"Stan",target:"Linguini",type:"enemy"},{source:"Stan",target:"Alicia",type:"enemy"},
+  {source:"Stan",target:"BoI",type:"enemy"},{source:"Florence",target:"Linguini",type:"enemy"},
+  {source:"Florence",target:"Sugar",type:"enemy"},{source:"Florence",target:"Lola",type:"enemy"},
+  {source:"Jimmy",target:"Linguini",type:"enemy"},{source:"Alicia",target:"Linguini",type:"enemy"},
+  {source:"Alicia",target:"Sugar",type:"enemy"},{source:"Alicia",target:"Lola",type:"enemy"},
+  {source:"Tommy",target:"Linguini",type:"enemy"},{source:"Pickles",target:"Tony",type:"enemy"},
+  {source:"Pickles",target:"Florence",type:"enemy"},{source:"Pickles",target:"Stan",type:"enemy"},
+  {source:"Tony",target:"Velma",type:"enemy"},{source:"Tony",target:"Sofia",type:"enemy"},
+  {source:"Sammy",target:"Linguini",type:"enemy"},{source:"Sammy",target:"Reno",type:"enemy"},
+  {source:"Al",target:"Mitzy",type:"enemy"},{source:"Sasha",target:"Linguini",type:"enemy"},
+  {source:"Sasha",target:"Velma",type:"enemy"},{source:"Sasha",target:"Benny",type:"enemy"},
+  {source:"Bobby",target:"Linguini",type:"enemy"},{source:"Bobby",target:"Velma",type:"enemy"},
+  {source:"Bobby",target:"Benny",type:"enemy"},{source:"Lola",target:"Mitzy",type:"enemy"},
+  {source:"Lola",target:"Florence",type:"enemy"},{source:"Lola",target:"Sugar",type:"enemy"},
+  {source:"Mitzy",target:"Florence",type:"enemy"},{source:"Mitzy",target:"Roxy",type:"enemy"},
+  {source:"Mitzy",target:"Sofia",type:"enemy"},{source:"Tillie",target:"Mitzy",type:"enemy"},
+  {source:"Phyllis",target:"Lola",type:"enemy"},{source:"Phyllis",target:"Mitzy",type:"enemy"},
+  {source:"Phyllis",target:"Kit",type:"enemy"},{source:"Phyllis",target:"Velma",type:"enemy"},
+  {source:"Pilkington",target:"Linguini",type:"enemy"},{source:"Pilkington",target:"BoI",type:"enemy"},
+  {source:"Velma",target:"Tony",type:"enemy"},{source:"Velma",target:"Stan",type:"enemy"},
+  {source:"Velma",target:"Trilby",type:"enemy"},{source:"Velma",target:"Laurie",type:"enemy"},
+  {source:"Linguini",target:"Stan",type:"enemy"},{source:"Linguini",target:"Florence",type:"enemy"},
+  {source:"Linguini",target:"Jimmy",type:"enemy"},{source:"Linguini",target:"Tommy",type:"enemy"},
+  {source:"Sugar",target:"Florence",type:"enemy"},{source:"Sugar",target:"Lola",type:"enemy"},
+  {source:"Sugar",target:"Ava",type:"enemy"},{source:"Benny",target:"Stan",type:"enemy"},
+  {source:"Benny",target:"Florence",type:"enemy"},{source:"Benny",target:"Sasha",type:"enemy"},
+  {source:"Benny",target:"Bobby",type:"enemy"},{source:"Mayor",target:"BoI",type:"enemy"},
+  {source:"Kit",target:"Stan",type:"enemy"},{source:"Kit",target:"Linguini",type:"enemy"},
+  {source:"Kit",target:"Phyllis",type:"enemy"},{source:"Kit",target:"BoI",type:"enemy"},
+  {source:"Sofia",target:"Tony",type:"enemy"},{source:"Sofia",target:"BoI",type:"enemy"},
+  {source:"Sofia",target:"Oswald",type:"enemy"},{source:"Trilby",target:"Stan",type:"enemy"},
+  {source:"Trilby",target:"Linguini",type:"enemy"},{source:"Trilby",target:"Pilkington",type:"enemy"},
+  {source:"Trilby",target:"Sofia",type:"enemy"},{source:"Trilby",target:"Oswald",type:"enemy"},
+  {source:"Laurie",target:"Stan",type:"enemy"},{source:"Laurie",target:"Linguini",type:"enemy"},
+  {source:"Laurie",target:"Pilkington",type:"enemy"},{source:"Laurie",target:"Sofia",type:"enemy"},
+  {source:"Laurie",target:"Oswald",type:"enemy"},{source:"Oswald",target:"Pilkington",type:"enemy"},
+  {source:"Oswald",target:"Trilby",type:"enemy"},{source:"Oswald",target:"Laurie",type:"enemy"},
+  {source:"Oswald",target:"Sofia",type:"enemy"},{source:"Ava",target:"Sugar",type:"enemy"},
+  {source:"Ava",target:"Lola",type:"enemy"},{source:"Ava",target:"Mitzy",type:"enemy"},
+  {source:"Ava",target:"Tillie",type:"enemy"},{source:"JD",target:"Pilkington",type:"enemy"},
+  {source:"JD",target:"Trilby",type:"enemy"},{source:"JD",target:"Laurie",type:"enemy"},
+  {source:"Reno",target:"Tony",type:"enemy"},{source:"Reno",target:"Sammy",type:"enemy"},
+  {source:"Reno",target:"Stan",type:"enemy"},{source:"Reno",target:"Kit",type:"enemy"},
+  {source:"LadyPatricia",target:"Lola",type:"enemy"},{source:"Sly",target:"Roxy",type:"enemy"},
+  {source:"Sly",target:"Sofia",type:"enemy"},{source:"Sly",target:"Stan",type:"enemy"},
+  {source:"Sly",target:"Linguini",type:"enemy"},{source:"Roxy",target:"Mitzy",type:"enemy"},
+  {source:"Roxy",target:"Trilby",type:"enemy"},{source:"Roxy",target:"Reno",type:"enemy"},
+];
+
+const GROUP_FILL    = { Management:"#EF9F27", Staff:"#1D9E75", Clientele:"#7F77DD", Special:"#888780" };
+const GROUP_TEXT    = { Management:"#3D2200", Staff:"#042E22", Clientele:"#1C1650", Special:"#1a1a1a" };
+const GENDER_STROKE = { Male:"#E24B4A", Female:"#378ADD", Either:"#444444" };
+
+// ═══════════════════════════════════════════════
+//  STATE — persisted to localStorage
+// ═══════════════════════════════════════════════
+const LS_KEY = "speakeasy_invitees_v1";
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      // migrate older saves that lack these fields
+      if (!s.savedArrangements) s.savedArrangements = [];
+      if (!s.activeSnapId) s.activeSnapId = null;
+      return s;
+    }
+  } catch(e) {}
+  // assignments: { charId: inviteeName }
+  // savedArrangements: [{ id, name, assignments, savedAt }]
+  return { invitees: [], assignments: {}, savedArrangements: [], activeSnapId: null };
+}
+
+function saveState() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+let state = loadState();
+// state.invitees = ["Alice","Bob",...]
+// state.assignments = { "Stan":"Alice", "Lola":"Bob" }
+
+// ═══════════════════════════════════════════════
+//  GRAPH
+// ═══════════════════════════════════════════════
+const svg = d3.select("#graph");
+const zoomG = svg.append("g");
+const zoom = d3.zoom().scaleExtent([0.1,4]).on("zoom", e => zoomG.attr("transform", e.transform));
+svg.call(zoom);
+
+let activeTiers = new Set([1,2,3,4,5]);
+let sim, linkSel, nodeSel, nameTagSel, currentNodes, currentEdges;
+let uiVisible = true, guestsVisible = true;
+
+function nodeR(d) {
+  if (d.id === "BoI") return 34;
+  if (d.id === "LadyPatricia") return 38;
+  return 30;
+}
+
+function dedupEdges(arr) {
+  const seen = new Set();
+  return arr.filter(e => {
+    const k = [e.source,e.target].sort().join("§")+"§"+e.type;
+    if (seen.has(k)) return false; seen.add(k); return true;
+  });
+}
+
+function render() {
+  zoomG.selectAll("*").remove();
+
+  const nodes = NODES_RAW
+    .filter(n => n.tier === 0 || activeTiers.has(n.tier))
+    .map(n => ({...n}));
+  const nodeIds = new Set(nodes.map(n => n.id));
+  const edges = dedupEdges(EDGES_RAW)
+    .filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
+    .map(e => ({...e}));
+  currentNodes = nodes;
+  currentEdges = edges;
+
+  const W = window.innerWidth, H = window.innerHeight;
+  if (sim) sim.stop();
+
+  sim = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(edges).id(d=>d.id)
+      .distance(d => d.type==="romance"?85:d.type==="ally"?115:145)
+      .strength(d => d.type==="romance"?0.8:d.type==="ally"?0.22:0.04))
+    .force("charge", d3.forceManyBody().strength(-550))
+    .force("center",  d3.forceCenter(W/2, H/2))
+    .force("collide", d3.forceCollide().radius(d => nodeR(d)+20));
+
+  const pairMap = {};
+  edges.forEach(e => {
+    const k=[e.source.id||e.source,e.target.id||e.target].sort().join("§");
+    if (!pairMap[k]) pairMap[k]=[];
+    pairMap[k].push(e);
+  });
+
+  ["enemy","ally","romance"].forEach(type => {
+    zoomG.append("g").selectAll("path")
+      .data(edges.filter(e=>e.type===type))
+      .join("path")
+      .attr("class","link-"+type)
+      .attr("stroke-width", type==="romance"?2.8:type==="ally"?1.8:1.6);
+  });
+
+  linkSel = zoomG.selectAll("path[class^='link-']");
+
+  nodeSel = zoomG.append("g").attr("class","nodes")
+    .selectAll("g")
+    .data(nodes)
+    .join("g")
+    .attr("class","node-group")
+    .style("cursor","pointer")
+    .call(d3.drag()
+      .on("start",(ev,d)=>{ if(!ev.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on("drag", (ev,d)=>{ d.fx=ev.x; d.fy=ev.y; })
+      .on("end",  (ev,d)=>{ if(!ev.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }))
+    .on("mouseover", onOver)
+    .on("mousemove",  onMove)
+    .on("mouseout",   onOut);
+
+  nodeSel.append("circle")
+    .attr("r", nodeR)
+    .attr("fill",   d=>GROUP_FILL[d.group])
+    .attr("stroke", d=>GENDER_STROKE[d.gender])
+    .attr("stroke-width", 3);
+
+  nodeSel.each(function(d) {
+    const g = d3.select(this);
+    const lines = d.label.split("\n");
+    const fs = d.id==="BoI"?9.5:d.id==="LadyPatricia"?9:11;
+    const t = g.append("text")
+      .attr("text-anchor","middle")
+      .style("font-size",fs+"px").style("font-weight","700")
+      .style("pointer-events","none")
+      .style("fill", GROUP_TEXT[d.group]);
+    if (lines.length===1) {
+      t.attr("dominant-baseline","central").text(d.label);
+    } else {
+      lines.forEach((ln,i)=>t.append("tspan").attr("x",0).attr("dy",i===0?`${-(lines.length-1)*0.55}em`:"1.15em").text(ln));
+    }
+  });
+
+  // Name-tag layer (below nodes, above links... actually append after so it's on top)
+  nameTagSel = zoomG.append("g").attr("class","nametags");
+
+  sim.on("tick", () => {
+    zoomG.selectAll("path").attr("d", d=>{
+      const sx=d.source.x,sy=d.source.y,tx=d.target.x,ty=d.target.y;
+      const k=[d.source.id,d.target.id].sort().join("§");
+      const group=pairMap[k]||[d];
+      const idx=group.indexOf(d), total=group.length;
+      const dx=tx-sx,dy=ty-sy,len=Math.sqrt(dx*dx+dy*dy)||1;
+      const off=(idx-(total-1)/2)*13;
+      return `M${sx},${sy} Q${(sx+tx)/2-dy/len*off},${(sy+ty)/2+dx/len*off} ${tx},${ty}`;
+    });
+    nodeSel.attr("transform",d=>`translate(${d.x},${d.y})`);
+    updateNameTags();
+  });
+
+  updateNameTags();
+}
+
+function updateNameTags() {
+  if (!nameTagSel || !currentNodes) return;
+  const tagged = currentNodes.filter(d => state.assignments[d.id]);
+  const tags = nameTagSel.selectAll("g.nametag").data(tagged, d=>d.id);
+
+  const enter = tags.enter().append("g").attr("class","nametag").style("pointer-events","none");
+  enter.append("rect").attr("rx",4).attr("fill","#fff").attr("stroke","#7F77DD").attr("stroke-width",1.5);
+  enter.append("text").attr("text-anchor","middle").style("font-size","9px").style("font-weight","700").style("fill","#2a2560");
+
+  const all = enter.merge(tags);
+  all.attr("transform", d=>`translate(${d.x},${d.y + nodeR(d) + 13})`);
+  all.select("text").text(d => state.assignments[d.id]);
+  all.each(function() {
+    const t = d3.select(this).select("text");
+    const node = t.node();
+    if (!node) return;
+    const bbox = node.getBBox();
+    d3.select(this).select("rect")
+      .attr("x", bbox.x-4).attr("y", bbox.y-2)
+      .attr("width", bbox.width+8).attr("height", bbox.height+4);
+  });
+
+  tags.exit().remove();
+}
+
+// ═══════════════════════════════════════════════
+//  HOVER
+// ═══════════════════════════════════════════════
+function onOver(ev, d) {
+  const conn = new Set([d.id]);
+  currentEdges.forEach(e=>{
+    const s=e.source.id||e.source,t=e.target.id||e.target;
+    if(s===d.id||t===d.id){conn.add(s);conn.add(t);}
+  });
+  nodeSel.classed("dimmed",nd=>!conn.has(nd.id));
+  zoomG.selectAll("path").classed("dimmed",e=>{
+    const s=e.source.id||e.source,t=e.target.id||e.target;
+    return s!==d.id&&t!==d.id;
+  });
+  const inv = state.assignments[d.id];
+  const tip = document.getElementById("tooltip");
+  tip.style.display="block";
+  tip.innerHTML=`<div class="tt-name">${d.fullName}</div>`+
+    `<div class="tt-group">${d.group} · Tier ${d.tier||"N/A"} · ${d.gender}</div>`+
+    `<div class="tt-desc">${d.desc}</div>`+
+    (inv?`<div class="tt-inv">👤 ${inv}</div>`:"");
+}
+function onMove(ev) {
+  const t=document.getElementById("tooltip");
+  t.style.left=(ev.pageX+14)+"px"; t.style.top=(ev.pageY-14)+"px";
+}
+function onOut() {
+  if(nodeSel) nodeSel.classed("dimmed",false);
+  zoomG.selectAll("path").classed("dimmed",false);
+  document.getElementById("tooltip").style.display="none";
+}
+
+// ═══════════════════════════════════════════════
+//  INVITEE LIST
+// ═══════════════════════════════════════════════
+function renderInvitees() {
+  const list = document.getElementById("invitee-list");
+  list.innerHTML="";
+  state.invitees.forEach(name => {
+    const charId = Object.keys(state.assignments).find(k=>state.assignments[k]===name);
+    const charName = charId ? (NODES_RAW.find(n=>n.id===charId)||{}).fullName||charId : null;
+    const item = document.createElement("div");
+    item.className = "invitee-item" + (charName?" assigned":"");
+    item.dataset.name = name;
+    item.innerHTML = `
+      <div class="inv-info">
+        <div class="inv-name">${escHtml(name)}</div>
+        ${charName?`<div class="inv-char">→ ${escHtml(charName)}</div>`:""}
+      </div>
+      <button class="inv-remove" title="Remove">×</button>`;
+
+    item.querySelector(".inv-remove").addEventListener("click", e=>{
+      e.stopPropagation();
+      removeInvitee(name);
+    });
+
+    setupDrag(item, name);
+    list.appendChild(item);
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function addInvitee(name) {
+  name = name.trim();
+  if (!name || state.invitees.includes(name)) return false;
+  state.invitees.push(name);
+  saveState();
+  renderInvitees();
+  return true;
+}
+
+function removeInvitee(name) {
+  state.invitees = state.invitees.filter(n=>n!==name);
+  // Remove assignment
+  Object.keys(state.assignments).forEach(k=>{ if(state.assignments[k]===name) delete state.assignments[k]; });
+  saveState();
+  renderInvitees();
+  updateNameTags();
+}
+
+function assignInvitee(charId, name) {
+  // Remove previous assignment for this char
+  delete state.assignments[charId];
+  // Remove this name from any previous char
+  Object.keys(state.assignments).forEach(k=>{ if(state.assignments[k]===name) delete state.assignments[k]; });
+  if (name) state.assignments[charId] = name;
+  state.activeSnapId = null; // diverged from any saved snapshot
+  saveState();
+  renderInvitees();
+  renderSaved();
+  updateNameTags();
+}
+
+// ═══════════════════════════════════════════════
+//  DRAG FROM PANEL ONTO GRAPH
+// ═══════════════════════════════════════════════
+const ghost = document.getElementById("drag-ghost");
+let draggingName = null;
+let dropTarget = null;
+
+function setupDrag(el, name) {
+  // Pointer events for cross-browser touch+mouse
+  el.addEventListener("pointerdown", e=>{
+    if (e.target.classList.contains("inv-remove")) return;
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    draggingName = name;
+    el.classList.add("dragging");
+    ghost.textContent = name;
+    ghost.style.display="block";
+    moveGhost(e.clientX, e.clientY);
+  });
+
+  el.addEventListener("pointermove", e=>{
+    if (!draggingName) return;
+    moveGhost(e.clientX, e.clientY);
+    hitTestNode(e.clientX, e.clientY);
+  });
+
+  el.addEventListener("pointerup", e=>{
+    if (!draggingName) return;
+    el.classList.remove("dragging");
+    ghost.style.display="none";
+    clearDropTarget();
+
+    const charNode = getNodeAtPoint(e.clientX, e.clientY);
+    if (charNode && charNode.id !== "BoI") {
+      assignInvitee(charNode.id, draggingName);
+    }
+    draggingName = null;
+  });
+
+  el.addEventListener("pointercancel", ()=>{
+    draggingName=null;
+    ghost.style.display="none";
+    el.classList.remove("dragging");
+    clearDropTarget();
+  });
+}
+
+function moveGhost(x,y) {
+  ghost.style.left=(x+12)+"px";
+  ghost.style.top =(y-10)+"px";
+}
+
+function getNodeAtPoint(cx,cy) {
+  if (!currentNodes) return null;
+  const wrap = document.getElementById("graph-wrap");
+  const rect = wrap.getBoundingClientRect();
+  const svgEl = document.getElementById("graph");
+  const pt = svgEl.createSVGPoint();
+  pt.x=cx-rect.left; pt.y=cy-rect.top;
+  const xf = zoomG.node().getScreenCTM();
+  if (!xf) return null;
+  const inv = pt.matrixTransform(xf.inverse());
+  return currentNodes.find(d=>{
+    const dx=d.x-inv.x, dy=d.y-inv.y;
+    return Math.sqrt(dx*dx+dy*dy) <= nodeR(d)+6;
+  }) || null;
+}
+
+function hitTestNode(cx,cy) {
+  const node = getNodeAtPoint(cx,cy);
+  if (node && node.id!=="BoI") {
+    if (dropTarget !== node.id) {
+      clearDropTarget();
+      dropTarget = node.id;
+      if (nodeSel) {
+        nodeSel.filter(d=>d.id===node.id).classed("node-drop-target",true);
+      }
+    }
+  } else {
+    clearDropTarget();
+  }
+}
+
+function clearDropTarget() {
+  dropTarget=null;
+  if (nodeSel) nodeSel.classed("node-drop-target",false);
+}
+
+// ═══════════════════════════════════════════════
+//  SAVED ARRANGEMENTS
+// ═══════════════════════════════════════════════
+function saveArrangement(name) {
+  name = name.trim();
+  if (!name) return false;
+  const id = "snap_" + Date.now();
+  const snap = {
+    id,
+    name,
+    assignments: { ...state.assignments },
+    savedAt: new Date().toLocaleString()
+  };
+  state.savedArrangements.push(snap);
+  state.activeSnapId = id;
+  saveState();
+  renderSaved();
+  return true;
+}
+
+function loadArrangement(id) {
+  const snap = state.savedArrangements.find(s => s.id === id);
+  if (!snap) return;
+  state.assignments = { ...snap.assignments };
+  state.activeSnapId = id;
+  saveState();
+  renderInvitees();
+  renderSaved();
+  updateNameTags();
+}
+
+function deleteArrangement(id) {
+  state.savedArrangements = state.savedArrangements.filter(s => s.id !== id);
+  if (state.activeSnapId === id) state.activeSnapId = null;
+  saveState();
+  renderSaved();
+}
+
+function renderSaved() {
+  const list = document.getElementById("saved-list");
+  list.innerHTML = "";
+  const snaps = state.savedArrangements;
+  if (snaps.length === 0) {
+    list.innerHTML = `<div id="saved-empty">No saved arrangements yet</div>`;
+    return;
+  }
+  // Newest first
+  [...snaps].reverse().forEach(snap => {
+    const isActive = snap.id === state.activeSnapId;
+    const count = Object.keys(snap.assignments).length;
+    const item = document.createElement("div");
+    item.className = "saved-item" + (isActive ? " active-snap" : "");
+    item.innerHTML = `
+      <div class="saved-item-name">
+        ${escHtml(snap.name)}<sub>${count} assigned</sub>
+      </div>
+      <button class="saved-item-load" title="Load this arrangement">Load</button>
+      <button class="saved-item-del" title="Delete">×</button>`;
+    item.querySelector(".saved-item-load").addEventListener("click", () => loadArrangement(snap.id));
+    item.querySelector(".saved-item-del").addEventListener("click", () => {
+      if (confirm(`Delete arrangement "${snap.name}"?`)) deleteArrangement(snap.id);
+    });
+    list.appendChild(item);
+  });
+}
+
+// Toggle saved section collapse
+document.getElementById("saved-header").addEventListener("click", () => {
+  const body = document.getElementById("saved-body");
+  const arrow = document.querySelector("#saved-header .saved-toggle");
+  const collapsed = body.classList.toggle("collapsed");
+  arrow.classList.toggle("open", !collapsed);
+});
+
+// Save button
+document.getElementById("save-now-btn").addEventListener("click", () => {
+  const inp = document.getElementById("save-name-input");
+  if (saveArrangement(inp.value)) inp.value = "";
+  inp.focus();
+});
+document.getElementById("save-name-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    const inp = e.target;
+    if (saveArrangement(inp.value)) inp.value = "";
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  TOOLBAR BUTTONS
+// ═══════════════════════════════════════════════
+document.getElementById("btn-ui").addEventListener("click",()=>{
+  uiVisible=!uiVisible;
+  document.getElementById("legend").classList.toggle("hidden",!uiVisible);
+  document.getElementById("tier-filter").classList.toggle("hidden",!uiVisible);
+  document.getElementById("hint-bar").classList.toggle("hidden",!uiVisible);
+  document.getElementById("btn-ui").textContent=uiVisible?"Hide UI":"Show UI";
+});
+
+document.getElementById("btn-guests").addEventListener("click",()=>{
+  guestsVisible=!guestsVisible;
+  document.getElementById("invitee-panel").classList.toggle("hidden",!guestsVisible);
+  document.getElementById("btn-guests").textContent=guestsVisible?"Hide Guests":"Show Guests";
+});
+
+document.getElementById("btn-clear-assignments").addEventListener("click",()=>{
+  if (confirm("Clear all character assignments?")) {
+    state.assignments={};
+    state.activeSnapId=null;
+    saveState();
+    renderInvitees();
+    renderSaved();
+    updateNameTags();
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  ADD INVITEE INPUT
+// ═══════════════════════════════════════════════
+document.getElementById("invitee-add-btn").addEventListener("click",()=>{
+  const inp=document.getElementById("invitee-input");
+  if(addInvitee(inp.value)) inp.value="";
+  inp.focus();
+});
+document.getElementById("invitee-input").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    const inp=e.target;
+    if(addInvitee(inp.value)) inp.value="";
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  TIER FILTER
+// ═══════════════════════════════════════════════
+document.querySelectorAll(".tier-cb").forEach(cb=>{
+  cb.addEventListener("change",()=>{
+    activeTiers=new Set([...document.querySelectorAll(".tier-cb:checked")].map(c=>+c.value));
+    render();
+  });
+});
+
+window.addEventListener("resize",()=>{
+  if(sim) sim.force("center",d3.forceCenter(window.innerWidth/2,window.innerHeight/2)).alpha(0.15).restart();
+});
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+render();
+renderInvitees();
+renderSaved();
+</script>
+</body>
+</html>
