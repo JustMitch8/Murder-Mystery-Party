@@ -123,7 +123,7 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
   background: #fff; border-top: 2px solid #ddd;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.10);
   z-index: 200; display: flex; flex-direction: column;
-  height: 30%;
+  height: 40%;
   transform: translateY(100%); transition: transform 0.28s cubic-bezier(0.32,0.72,0,1);
 }
 #node-drawer.open { transform: translateY(0); }
@@ -786,7 +786,38 @@ function closeDrawer() {
   if(nodeSel) nodeSel.classed("dimmed",false);
   if(zoomG) zoomG.selectAll("path").classed("dimmed",false);
 }
+// ═══════════════════════════════════════════════════════════
+//  DRAWER RESIZING
+// ═══════════════════════════════════════════════════════════
+let drawerMinHeight = 120;
+let drawerMaxHeight = 0.9; // 90% of viewport
 
+document.getElementById("drawer-resize-handle").addEventListener("mousedown", (e) => {
+  e.preventDefault();
+  const drawer = document.getElementById("node-drawer");
+  const startY = e.clientY;
+  const startHeight = drawer.offsetHeight;
+  
+  function onMouseMove(moveEvent) {
+    const deltaY = startY - moveEvent.clientY; // negative = dragging up
+    let newHeight = startHeight + deltaY;
+    
+    // Enforce min/max constraints
+    newHeight = Math.max(drawerMinHeight, newHeight);
+    newHeight = Math.min(window.innerHeight * drawerMaxHeight, newHeight);
+    
+    drawer.style.height = newHeight + "px";
+  }
+  
+  function onMouseUp() {
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+  }
+  
+  document.addEventListener("mousemove", onMouseMove);
+  document.addEventListener("mouseup", onMouseUp);
+});
+  
 document.getElementById("drawer-close").addEventListener("click", closeDrawer);
 
 // Tabs
