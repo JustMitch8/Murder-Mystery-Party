@@ -119,11 +119,11 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
    NODE DETAIL DRAWER
 ═══════════════════════════════════════ */
 #node-drawer {
-  position: fixed; bottom: 0; left: 0; right: 0;
+  position: absolute; bottom: 0; left: 0; right: 0;
   background: #fff; border-top: 2px solid #ddd;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.10);
   z-index: 200; display: flex; flex-direction: column;
-  height: 40%; min-height: 120px; max-height: 90%;
+  max-height: 60%;
   transform: translateY(100%); transition: transform 0.28s cubic-bezier(0.32,0.72,0,1);
 }
 #node-drawer.open { transform: translateY(0); }
@@ -166,14 +166,6 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   padding: 14px 16px 20px;
 }
-/* ── Resize handle ── */
-#drawer-resize-handle {
-  position: absolute; top: 0; left: 0; right: 0;
-  height: 8px; cursor: ns-resize; background: transparent;
-  border-top: 2px solid #ddd; transition: background 0.15s;
-  touch-action: none; z-index: 201;
-}
-#drawer-resize-handle:hover { background: rgba(127, 119, 221, 0.1); }
 
 /* Relationships tab */
 .rel-section { margin-bottom: 14px; }
@@ -301,7 +293,6 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
 
     <!-- Node detail drawer -->
     <div id="node-drawer">
-      <div id="drawer-resize-handle"></div>
       <div id="drawer-header">
         <div id="drawer-dot"></div>
         <div id="drawer-title-block">
@@ -795,38 +786,7 @@ function closeDrawer() {
   if(nodeSel) nodeSel.classed("dimmed",false);
   if(zoomG) zoomG.selectAll("path").classed("dimmed",false);
 }
-// ═══════════════════════════════════════════════════════════
-//  DRAWER RESIZING
-// ═══════════════════════════════════════════════════════════
-let drawerMinHeight = 120;
-let drawerMaxHeight = 0.9; // 90% of viewport
 
-document.getElementById("drawer-resize-handle").addEventListener("mousedown", (e) => {
-  e.preventDefault();
-  const drawer = document.getElementById("node-drawer");
-  const startY = e.clientY;
-  const startHeight = drawer.offsetHeight;
-  
-  function onMouseMove(moveEvent) {
-    const deltaY = startY - moveEvent.clientY; // negative = dragging up
-    let newHeight = startHeight + deltaY;
-    
-    // Enforce min/max constraints
-    newHeight = Math.max(drawerMinHeight, newHeight);
-    newHeight = Math.min(window.innerHeight * drawerMaxHeight, newHeight);
-    
-    drawer.style.height = newHeight + "px";
-  }
-  
-  function onMouseUp() {
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", onMouseUp);
-  }
-  
-  document.addEventListener("mousemove", onMouseMove);
-  document.addEventListener("mouseup", onMouseUp);
-});
-  
 document.getElementById("drawer-close").addEventListener("click", closeDrawer);
 
 // Tabs
