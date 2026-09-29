@@ -60,9 +60,12 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
   flex-shrink: 0; padding: 12px 14px 8px;
   border-bottom: 1px solid #ddd;
 }
-#inv-header-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-#inv-header-top h2 { font-size: 13px; font-weight: 700; color: #111; }
+/* Tablet: show counts inline with title */
+#inv-header-inner { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; cursor: default; }
+#inv-header-inner h2 { font-size: 13px; font-weight: 700; color: #111; }
 #inv-counts { font-size: 11px; color: #888; white-space: nowrap; }
+/* Hide chevron on tablet */
+#inv-chevron { display: none; }
 #inv-hint { font-size: 10px; color: #aaa; line-height: 1.4; }
 
 /* add row — fixed */
@@ -255,17 +258,156 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
 .link-enemy   { stroke: #111111; stroke-opacity: 0.70; fill: none; }
 .link-romance { stroke: #c0175d; stroke-opacity: 0.85; fill: none; }
 .dimmed       { opacity: 0.06; }
+
+/* ── Snapshot cards ── */
+.snap-card {
+  border: 1px solid #e0e0e0; border-radius: 8px;
+  padding: 10px 12px; margin-bottom: 8px; background: #fafafa;
+}
+.snap-card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.snap-card-name { font-size: 12px; font-weight: 700; color: #111; flex: 1; word-break: break-word; }
+.snap-card-date { font-size: 10px; color: #aaa; white-space: nowrap; flex-shrink: 0; }
+.snap-card-meta { font-size: 11px; color: #777; margin-bottom: 8px; }
+.snap-card-actions { display: flex; gap: 6px; }
+.snap-btn-load {
+  background: #7F77DD; color: #fff; border: none; border-radius: 6px;
+  padding: 5px 12px; font-size: 11px; font-weight: 700; cursor: pointer; flex: 1;
+}
+.snap-btn-load:hover { background: #6860c8; }
+.snap-btn-overwrite {
+  background: #fff; color: #7F77DD; border: 1px solid #7F77DD; border-radius: 6px;
+  padding: 5px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.snap-btn-overwrite:hover { background: #f0eeff; }
+.snap-btn-del {
+  background: #fff; color: #ccc; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 5px 10px; font-size: 13px; cursor: pointer; line-height: 1;
+}
+.snap-btn-del:hover { color: #e04a4a; border-color: #e04a4a; }
+#snapshot-panel.snap-open { transform: translateX(0); }
+
+/* ════════════════════════════════════
+   PHONE LAYOUT  (max-width: 600px)
+   Tablet and above: unchanged
+═══════════════════════════════════════ */
+@media (max-width: 600px) {
+
+  /* ── Toolbar: icon-only buttons, title stays ── */
+  #toolbar { padding: 6px 8px; gap: 5px; flex-wrap: nowrap; }
+  #toolbar h1 { font-size: 12px; }
+  .tb-btn {
+    padding: 6px 8px; font-size: 11px;
+    /* Hide text, show icon set via data-icon */
+  }
+  /* Hide full button labels, show short ones */
+  .tb-btn .btn-long { display: none; }
+  .tb-btn .btn-short { display: inline; }
+
+  /* ── Overlay panels: hidden by default on phone,
+        toggled via Hide UI (they're inside graph-wrap
+        so they already absolute-position fine) ── */
+  #tier-filter { top: 8px; left: 8px; padding: 10px 12px; max-width: calc(100vw - 16px); }
+  #legend { top: 8px; right: 8px; padding: 10px 12px; min-width: 0; max-width: calc(50vw); }
+  #hint-bar { display: none; } /* too much clutter on phone */
+
+  /* ── Invitee panel: bottom sheet on phone ── */
+  #app { flex-direction: column; }
+
+  #invitee-panel {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--panel-border);
+    flex-direction: column;
+    /* default closed (collapsed) on phone */
+    height: 44px;       /* just the header bar visible */
+    flex-shrink: 0;
+    transition: height 0.28s cubic-bezier(0.32,0.72,0,1);
+    overflow: hidden;
+    position: relative;
+  }
+  /* When expanded on phone */
+  #invitee-panel.phone-open {
+    height: 52vh;
+  }
+  /* Phone: hide the "hidden" state transition — use phone-open instead */
+  #invitee-panel.hidden {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    position: relative;
+    height: 44px;
+  }
+
+  /* Phone-only collapsed header tap target */
+  #inv-phone-toggle {
+    display: flex;
+  }
+  #inv-header {
+    padding: 0;
+  }
+  #inv-header-inner {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    height: 44px;
+    gap: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #inv-header-inner h2 { font-size: 13px; font-weight: 700; flex: 1; }
+  #inv-header-inner #inv-counts { font-size: 11px; color: #888; }
+  #inv-header-inner #inv-chevron {
+    font-size: 14px; color: #aaa; transition: transform 0.25s; flex-shrink: 0;
+  }
+  #invitee-panel.phone-open #inv-header-inner #inv-chevron {
+    transform: rotate(180deg);
+  }
+  #inv-hint { display: none; } /* hide hint text on phone */
+  #inv-add-row { padding: 8px 10px 6px; }
+  #inv-list-wrap { padding: 4px 8px 6px; }
+
+  /* ── Node drawer: full width already, but taller on phone ── */
+  #node-drawer { height: 55%; }
+  #drawer-header { padding: 10px 12px 0; gap: 10px; }
+  #drawer-dot { width: 28px; height: 28px; }
+  #drawer-name { font-size: 13px; }
+  #drawer-tabs { padding: 0 8px; }
+  .dtab { padding: 8px 10px; font-size: 11px; }
+  #drawer-body { padding: 10px 12px 16px; }
+
+  /* ── Relationships: narrower name column ── */
+  .rel-name { min-width: 70px; font-size: 11px; }
+  .rel-desc { font-size: 11px; }
+
+  /* ── Modal: full-width ── */
+  #modal-box {
+    width: 96vw !important;
+    padding: 18px 14px !important;
+    max-height: 90vh !important;
+  }
+
+  /* ── Tooltip: disabled on phone (tap = drawer instead) ── */
+  #tooltip { display: none !important; }
+
+  /* ── Ghost drag label ── */
+  #drag-ghost { font-size: 13px; padding: 8px 14px; }
+/* ── Snapshot panel phone ── */
+  #snapshot-panel { width: 100% !important; top: auto !important; height: 80vh; border-left: none !important; border-top: 1px solid #ccc; transform: translateY(100%) !important; }
+  #snapshot-panel.snap-open { transform: translateY(0) !important; }
+  #snap-backdrop { display: none; }
+}
 </style>
 </head>
 <body>
 
 <div id="toolbar">
   <h1>🎷 A Speakeasy Murder — Character Map</h1>
-  <button class="tb-btn" id="btn-ui">Hide UI</button>
-  <button class="tb-btn" id="btn-guests">Hide Guests</button>
-  <button class="tb-btn" id="btn-clear">Clear Assignments</button>
-  <button class="tb-btn" id="btn-export">Export List</button>
-  <button class="tb-btn" id="btn-import">Import List</button>
+  <button class="tb-btn" id="btn-ui"><span class="btn-long">Hide UI</span><span class="btn-short" style="display:none">UI</span></button>
+  <button class="tb-btn" id="btn-guests"><span class="btn-long">Hide Guests</span><span class="btn-short" style="display:none">Guests</span></button>
+  <button class="tb-btn" id="btn-clear"><span class="btn-long">Clear Assignments</span><span class="btn-short" style="display:none">Clear</span></button>
+  <button class="tb-btn" id="btn-export"><span class="btn-long">Export List</span><span class="btn-short" style="display:none">Export</span></button>
+  <button class="tb-btn" id="btn-import"><span class="btn-long">Import List</span><span class="btn-short" style="display:none">Import</span></button>
+  <button class="tb-btn" id="btn-snapshots"><span class="btn-long">Snapshots</span><span class="btn-short" style="display:none">💾</span></button>
 </div>
 
 <div id="app">
@@ -333,10 +475,13 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
   <!-- Invitee panel -->
   <div id="invitee-panel">
     <div id="inv-header">
-      <div id="inv-header-top">
+      <!-- Phone: tappable collapsed header -->
+      <div id="inv-header-inner">
         <h2>Invitees</h2>
         <span id="inv-counts"></span>
+        <span id="inv-chevron">▾</span>
       </div>
+      <!-- Tablet: hint text below header -->
       <div id="inv-hint">Drag a name onto a character node to assign their role.</div>
     </div>
     <div id="inv-add-row">
@@ -351,6 +496,36 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
 
 <div id="tooltip"></div>
 <div id="drag-ghost"></div>
+
+<!-- Snapshot panel (slides in from right, above everything) -->
+<div id="snapshot-panel" style="
+  position:fixed; top:0; right:0; bottom:0; width:min(340px,92vw);
+  background:#fff; border-left:1px solid #ccc;
+  box-shadow:-4px 0 24px rgba(0,0,0,0.12);
+  z-index:11000; display:flex; flex-direction:column;
+  transform:translateX(100%); transition:transform 0.28s cubic-bezier(0.32,0.72,0,1);
+">
+  <div style="display:flex;align-items:center;padding:14px 16px 10px;border-bottom:1px solid #eee;flex-shrink:0;">
+    <div style="font-size:14px;font-weight:700;color:#111;flex:1;">💾 Snapshots</div>
+    <button id="snap-close" style="background:none;border:none;font-size:22px;color:#aaa;cursor:pointer;line-height:1;padding:0;">×</button>
+  </div>
+
+  <!-- Save current -->
+  <div style="padding:12px 16px;border-bottom:1px solid #eee;flex-shrink:0;">
+    <div style="font-size:11px;color:#888;margin-bottom:8px;line-height:1.5;">Save the current guests and assignments as a named snapshot. Load it later to restore everything instantly.</div>
+    <div style="display:flex;gap:8px;">
+      <input id="snap-name-input" type="text" placeholder="Snapshot name…" maxlength="60" autocomplete="off"
+        style="flex:1;border:1px solid #ccc;border-radius:6px;padding:7px 10px;font-size:12px;font-family:inherit;outline:none;">
+      <button id="snap-save-btn" style="background:#7F77DD;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Save</button>
+    </div>
+    <div id="snap-save-error" style="color:#c0175d;font-size:11px;min-height:14px;margin-top:5px;"></div>
+  </div>
+
+  <!-- Saved list -->
+  <div id="snap-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 10px;"></div>
+  <div id="snap-empty" style="padding:30px 20px;text-align:center;font-size:12px;color:#bbb;line-height:1.6;">No snapshots saved yet.<br>Save your current setup above.</div>
+</div>
+<div id="snap-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:10999;"></div>
 
 <!-- Export/Import Modal -->
 <div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:10000;align-items:center;justify-content:center;">
@@ -1075,10 +1250,18 @@ function setupDrag(el, name) {
 
     if (!intentDecided && (adx > DECISION_PX || ady > DECISION_PX)) {
       intentDecided = true;
-      // Drag mode only if the movement is more horizontal than vertical
-      // OR the user is moving leftward (toward the graph) with any horizontal intent
-      if (adx > ady || dx < -DECISION_PX) {
+      // Tablet: drag left (toward graph) = drag mode; vertical = scroll
+      // Phone: drag up (toward graph above) = drag mode; vertical down or horizontal = scroll
+      const isPhone = IS_PHONE();
+      const startDrag = isPhone
+        ? (ady > adx && dy < -DECISION_PX)   // upward swipe on phone
+        : (adx > ady || dx < -DECISION_PX);  // leftward swipe on tablet
+      if (startDrag) {
         isDragMode = true;
+        // On phone, collapse the guest panel so the graph is fully visible during drag
+        if (IS_PHONE()) {
+          document.getElementById("invitee-panel").classList.remove("phone-open");
+        }
         // Now we own this pointer — prevent scroll and set capture
         e.preventDefault();
         try { el.setPointerCapture(e.pointerId); } catch(_) {}
@@ -1147,12 +1330,14 @@ document.getElementById("inv-input").addEventListener("keydown",e=>{
 document.getElementById("btn-ui").addEventListener("click",()=>{
   uiVisible=!uiVisible;
   ["legend","tier-filter","hint-bar"].forEach(id=>document.getElementById(id).classList.toggle("hidden",!uiVisible));
-  document.getElementById("btn-ui").textContent=uiVisible?"Hide UI":"Show UI";
+  document.getElementById("btn-ui").querySelector(".btn-long").textContent=uiVisible?"Hide UI":"Show UI";
+  document.getElementById("btn-ui").querySelector(".btn-short").textContent=uiVisible?"UI":"UI ✓";
 });
 document.getElementById("btn-guests").addEventListener("click",()=>{
+  if (IS_PHONE()) return; // phone handled separately above
   guestsVisible=!guestsVisible;
   document.getElementById("invitee-panel").classList.toggle("hidden",!guestsVisible);
-  document.getElementById("btn-guests").textContent=guestsVisible?"Hide Guests":"Show Guests";
+  document.getElementById("btn-guests").querySelector(".btn-long").textContent=guestsVisible?"Hide Guests":"Show Guests";
 });
 document.getElementById("btn-clear").addEventListener("click",()=>{
   if(confirm("Clear all character assignments?")){ state.assignments={}; saveState(); renderInvitees(); updateNameTags(); if(selectedNodeId){ document.getElementById("drawer-inv").textContent=""; } }
@@ -1335,6 +1520,196 @@ modalAction.addEventListener("click", ()=>{
 
 document.getElementById("btn-export").addEventListener("click", ()=> showModal("export"));
 document.getElementById("btn-import").addEventListener("click", ()=> showModal("import"));
+
+// ═══════════════════════════════════════════════════════════
+//  SNAPSHOTS
+// ═══════════════════════════════════════════════════════════
+const SNAP_KEY = "speakeasy_snapshots_v1";
+
+function loadSnapshots() {
+  try { const r = localStorage.getItem(SNAP_KEY); if (r) return JSON.parse(r); } catch(e) {}
+  return [];
+}
+function saveSnapshots(snaps) {
+  try { localStorage.setItem(SNAP_KEY, JSON.stringify(snaps)); } catch(e) {}
+}
+
+function snapSummary(snap) {
+  const total = snap.invitees ? snap.invitees.length : 0;
+  const assigned = snap.assignments ? Object.keys(snap.assignments).length : 0;
+  return `${total} guest${total!==1?"s":""} · ${assigned} assigned`;
+}
+
+function renderSnapshots() {
+  const snaps = loadSnapshots();
+  const list = document.getElementById("snap-list");
+  const empty = document.getElementById("snap-empty");
+  list.innerHTML = "";
+
+  if (snaps.length === 0) {
+    empty.style.display = "block";
+    list.style.display = "none";
+    return;
+  }
+  empty.style.display = "none";
+  list.style.display = "block";
+
+  // Newest first
+  [...snaps].reverse().forEach((snap, revIdx) => {
+    const realIdx = snaps.length - 1 - revIdx;
+    const card = document.createElement("div");
+    card.className = "snap-card";
+
+    const d = new Date(snap.savedAt);
+    const dateStr = d.toLocaleDateString(undefined, { day:"numeric", month:"short", year:"numeric" })
+      + " " + d.toLocaleTimeString(undefined, { hour:"2-digit", minute:"2-digit" });
+
+    card.innerHTML = `
+      <div class="snap-card-header">
+        <div class="snap-card-name">${escHtml(snap.name)}</div>
+        <div class="snap-card-date">${escHtml(dateStr)}</div>
+      </div>
+      <div class="snap-card-meta">${escHtml(snapSummary(snap))}</div>
+      <div class="snap-card-actions">
+        <button class="snap-btn-load" data-idx="${realIdx}">Load</button>
+        <button class="snap-btn-overwrite" data-idx="${realIdx}" title="Overwrite with current state">Update</button>
+        <button class="snap-btn-del" data-idx="${realIdx}" title="Delete snapshot">🗑</button>
+      </div>`;
+
+    card.querySelector(".snap-btn-load").addEventListener("click", () => {
+      loadSnapshot(realIdx);
+    });
+    card.querySelector(".snap-btn-overwrite").addEventListener("click", () => {
+      overwriteSnapshot(realIdx);
+    });
+    card.querySelector(".snap-btn-del").addEventListener("click", () => {
+      deleteSnapshot(realIdx);
+    });
+
+    list.appendChild(card);
+  });
+}
+
+function saveSnapshot(name) {
+  const snaps = loadSnapshots();
+  snaps.push({
+    name: name.trim(),
+    savedAt: Date.now(),
+    invitees: [...state.invitees],
+    assignments: {...state.assignments}
+  });
+  saveSnapshots(snaps);
+  renderSnapshots();
+}
+
+function loadSnapshot(idx) {
+  const snaps = loadSnapshots();
+  const snap = snaps[idx];
+  if (!snap) return;
+  const assignedCount = Object.keys(snap.assignments||{}).length;
+  const msg = `Load "${snap.name}"?\n\nThis will replace your current guests (${state.invitees.length}) and assignments (${Object.keys(state.assignments).length}) with:\n${snap.invitees.length} guests, ${assignedCount} assigned.`;
+  if (!confirm(msg)) return;
+  state.invitees = [...(snap.invitees||[])];
+  state.assignments = {...(snap.assignments||{})};
+  saveState();
+  renderInvitees();
+  updateNameTags();
+  if (selectedNodeId) {
+    const inv = state.assignments[selectedNodeId];
+    document.getElementById("drawer-inv").textContent = inv ? `👤 Playing: ${inv}` : "";
+  }
+  closeSnapshotPanel();
+}
+
+function overwriteSnapshot(idx) {
+  const snaps = loadSnapshots();
+  if (!snaps[idx]) return;
+  if (!confirm(`Update "${snaps[idx].name}" with the current state?`)) return;
+  snaps[idx].savedAt = Date.now();
+  snaps[idx].invitees = [...state.invitees];
+  snaps[idx].assignments = {...state.assignments};
+  saveSnapshots(snaps);
+  renderSnapshots();
+}
+
+function deleteSnapshot(idx) {
+  const snaps = loadSnapshots();
+  if (!snaps[idx]) return;
+  if (!confirm(`Delete snapshot "${snaps[idx].name}"?`)) return;
+  snaps.splice(idx, 1);
+  saveSnapshots(snaps);
+  renderSnapshots();
+}
+
+function openSnapshotPanel() {
+  renderSnapshots();
+  document.getElementById("snapshot-panel").classList.add("snap-open");
+  document.getElementById("snap-backdrop").style.display = "block";
+  document.getElementById("snap-name-input").focus();
+}
+function closeSnapshotPanel() {
+  document.getElementById("snapshot-panel").classList.remove("snap-open");
+  document.getElementById("snap-backdrop").style.display = "none";
+  document.getElementById("snap-save-error").textContent = "";
+}
+
+// Save button
+document.getElementById("snap-save-btn").addEventListener("click", () => {
+  const input = document.getElementById("snap-name-input");
+  const name = input.value.trim();
+  const err = document.getElementById("snap-save-error");
+  if (!name) { err.textContent = "Please enter a name for this snapshot."; return; }
+  if (state.invitees.length === 0 && Object.keys(state.assignments).length === 0) {
+    err.textContent = "Nothing to save — add some guests or assignments first."; return;
+  }
+  err.textContent = "";
+  saveSnapshot(name);
+  input.value = "";
+  // Brief success flash
+  const btn = document.getElementById("snap-save-btn");
+  btn.textContent = "Saved ✓"; btn.style.background = "#2d7a00";
+  setTimeout(() => { btn.textContent = "Save"; btn.style.background = ""; }, 1800);
+});
+
+document.getElementById("snap-name-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("snap-save-btn").click();
+});
+
+document.getElementById("snap-close").addEventListener("click", closeSnapshotPanel);
+document.getElementById("snap-backdrop").addEventListener("click", closeSnapshotPanel);
+document.getElementById("btn-snapshots").addEventListener("click", openSnapshotPanel);
+
+// ═══════════════════════════════════════════════════════════
+//  PHONE ADAPTATIONS
+// ═══════════════════════════════════════════════════════════
+const IS_PHONE = () => window.innerWidth <= 600;
+
+// Show short button labels on phone
+function applyPhoneLabels() {
+  const phone = IS_PHONE();
+  document.querySelectorAll(".btn-long").forEach(el => el.style.display = phone ? "none" : "");
+  document.querySelectorAll(".btn-short").forEach(el => el.style.display = phone ? "inline" : "none");
+}
+applyPhoneLabels();
+window.addEventListener("resize", applyPhoneLabels);
+
+// Phone: tapping the invitee header bar expands/collapses it
+document.getElementById("inv-header-inner").addEventListener("click", () => {
+  if (!IS_PHONE()) return;
+  const panel = document.getElementById("invitee-panel");
+  panel.classList.toggle("phone-open");
+});
+
+// Override the "Hide Guests" button behaviour on phone
+// (tablet: hides the side panel; phone: collapses/expands the bottom sheet)
+const origGuestsClick = document.getElementById("btn-guests").onclick;
+document.getElementById("btn-guests").addEventListener("click", e => {
+  if (!IS_PHONE()) return; // tablet handled by existing listener
+  const panel = document.getElementById("invitee-panel");
+  panel.classList.toggle("phone-open");
+  document.getElementById("btn-guests").querySelector(".btn-short").textContent =
+    panel.classList.contains("phone-open") ? "Guests ▴" : "Guests";
+});
 
 // ─── Tier filter ────────────────────────────────
 document.querySelectorAll(".tier-cb").forEach(cb=>{
