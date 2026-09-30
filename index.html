@@ -327,7 +327,7 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
   }
   /* When expanded on phone */
   #invitee-panel.phone-open {
-    height: 52vh;
+    height: 210px;
   }
   /* Phone: hide the "hidden" state transition — use phone-open instead */
   #invitee-panel.hidden {
@@ -364,7 +364,35 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
   }
   #inv-hint { display: none; } /* hide hint text on phone */
   #inv-add-row { padding: 8px 10px 6px; }
-  #inv-list-wrap { padding: 4px 8px 6px; }
+
+  /* Horizontal scroll row for cards on phone */
+  #inv-list-wrap {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 6px 8px 10px;
+    gap: 8px;
+    scroll-snap-type: x mandatory;
+    /* override the vertical flex from tablet */
+    flex: none;
+    height: auto;
+  }
+  /* Cards become fixed-width tiles in the row */
+  .inv-item {
+    flex-shrink: 0;
+    width: 130px;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: flex-start;
+    scroll-snap-align: start;
+    touch-action: pan-x;   /* allow horizontal scroll, intercept vertical for drag */
+    padding: 8px 10px;
+  }
+  .inv-item-info { width: 100%; }
+  .inv-remove { align-self: flex-end; padding: 0; margin-top: 4px; }
+  #inv-empty { white-space: nowrap; padding: 10px 4px; }
 
   /* ── Node drawer: full width already, but taller on phone ── */
   #node-drawer { height: 55%; }
@@ -1217,11 +1245,21 @@ const ghost = document.getElementById("drag-ghost");
 let draggingName=null, dropTarget=null;
 
 function setupDrag(el, name) {
-  // Track the pointer-down position so we can decide intent on first move
-  let downX = 0, downY = 0, intentDecided = false, isDragMode = false;
-  const DECISION_PX = 6; // pixels of movement before we decide scroll vs drag
+  let downX = 0, downY = 0;
+  let intentDecided = false, isDragMode = false;
+  const DECISION_PX = 8;
 
-  function cancelDrag() {
+  function startDragMode(e) {
+    isDragMode = true;
+    // No panel collapse on phone — the thin card row leaves the graph visible
+    try { el.setPointerCapture(e.pointerId); } catch(_) {}
+    el.classList.add("dragging");
+    ghost.textContent = name;
+    ghost.style.display = "block";
+    moveGhost(e.clientX, e.clientY);
+  }
+
+  function cancelAll() {
     draggingName = null;
     intentDecided = false;
     isDragMode = false;
@@ -1232,50 +1270,46 @@ function setupDrag(el, name) {
 
   el.addEventListener("pointerdown", e => {
     if (e.target.classList.contains("inv-remove")) return;
-    // Don't call preventDefault yet — let the scroll container handle vertical scrolls
     downX = e.clientX;
     downY = e.clientY;
     intentDecided = false;
     isDragMode = false;
-    draggingName = name; // tentatively set; cleared if we decide it's a scroll
-    el._dragPointerId = e.pointerId;
+    draggingName = name;
+    el._pid = e.pointerId;
   });
 
   el.addEventListener("pointermove", e => {
-    if (!draggingName || e.pointerId !== el._dragPointerId) return;
+    if (!draggingName || e.pointerId !== el._pid) return;
 
     const dx = e.clientX - downX;
     const dy = e.clientY - downY;
     const adx = Math.abs(dx), ady = Math.abs(dy);
 
-    if (!intentDecided && (adx > DECISION_PX || ady > DECISION_PX)) {
+    if (!intentDecided) {
+      if (adx < DECISION_PX && ady < DECISION_PX) return; // wait for clear movement
       intentDecided = true;
-      // Tablet: drag left (toward graph) = drag mode; vertical = scroll
-      // Phone: drag up (toward graph above) = drag mode; vertical down or horizontal = scroll
-      const isPhone = IS_PHONE();
-      const startDrag = isPhone
-        ? (ady > adx && dy < -DECISION_PX)   // upward swipe on phone
-        : (adx > ady || dx < -DECISION_PX);  // leftward swipe on tablet
-      if (startDrag) {
-        isDragMode = true;
-        // On phone, collapse the guest panel so the graph is fully visible during drag
-        if (IS_PHONE()) {
-          document.getElementById("invitee-panel").classList.remove("phone-open");
-        }
-        // Now we own this pointer — prevent scroll and set capture
-        e.preventDefault();
-        try { el.setPointerCapture(e.pointerId); } catch(_) {}
-        el.classList.add("dragging");
-        ghost.textContent = name;
-        ghost.style.display = "block";
-        moveGhost(e.clientX, e.clientY);
+
+      let wantDrag;
+      if (IS_PHONE()) {
+        // Phone: cards scroll horizontally, drag UP to assign
+        // Start drag if upward movement is present and not dominated by horizontal scroll
+        wantDrag = dy < -DECISION_PX && ady > adx * 0.6;
       } else {
-        // Vertical — let it scroll, abandon drag
+        // Tablet: cards scroll vertically, drag LEFT to assign
+        wantDrag = dx < -DECISION_PX || (adx > ady && dx < 0);
+      }
+
+      if (wantDrag) {
+        e.preventDefault();
+        startDragMode(e);
+      } else {
+        // Clear gesture — release and let scroll happen
         draggingName = null;
         return;
       }
     }
 
+    // Once in drag mode, keep going regardless of wobble direction
     if (!isDragMode) return;
     e.preventDefault();
     moveGhost(e.clientX, e.clientY);
@@ -1283,7 +1317,7 @@ function setupDrag(el, name) {
   });
 
   el.addEventListener("pointerup", e => {
-    if (!draggingName || e.pointerId !== el._dragPointerId) return;
+    if (!draggingName || e.pointerId !== el._pid) return;
     if (isDragMode) {
       el.classList.remove("dragging");
       ghost.style.display = "none";
@@ -1296,7 +1330,7 @@ function setupDrag(el, name) {
     isDragMode = false;
   });
 
-  el.addEventListener("pointercancel", cancelDrag);
+  el.addEventListener("pointercancel", cancelAll);
 }
 function moveGhost(x,y){ ghost.style.left=(x+12)+"px"; ghost.style.top=(y-10)+"px"; }
 function getNodeAtPoint(cx,cy) {
