@@ -225,6 +225,9 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
 .ls-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #777; margin-bottom: 6px; }
 .ls-section { margin-bottom: 11px; }
 .ls-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: #222; font-size: 12px; }
+.filter-row { cursor: pointer; user-select: none; -webkit-user-select: none; }
+.filter-row input[type="checkbox"] { cursor: pointer; accent-color: #7F77DD; flex-shrink: 0; width: 13px; height: 13px; }
+.filter-row.faded { opacity: 0.38; }
 .ls-swatch { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
 .ls-line { width: 26px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 .tier-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: #222; cursor: pointer; font-size: 12px; }
@@ -453,25 +456,38 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
     </div>
 
     <div class="panel" id="legend">
-      <h3>Key</h3>
+      <h3>Filters &amp; Key</h3>
+
       <div class="ls-section">
         <div class="ls-title">Node fill — group</div>
-        <div class="ls-row"><div class="ls-swatch" style="background:#EF9F27"></div>Management</div>
-        <div class="ls-row"><div class="ls-swatch" style="background:#1D9E75"></div>Staff</div>
-        <div class="ls-row"><div class="ls-swatch" style="background:#7F77DD"></div>Clientele</div>
-        <div class="ls-row"><div class="ls-swatch" style="background:#888780"></div>Special</div>
+        <label class="ls-row filter-row"><input type="checkbox" class="grp-cb" value="Management" checked>
+          <div class="ls-swatch" style="background:#EF9F27"></div>Management</label>
+        <label class="ls-row filter-row"><input type="checkbox" class="grp-cb" value="Staff" checked>
+          <div class="ls-swatch" style="background:#1D9E75"></div>Staff</label>
+        <label class="ls-row filter-row"><input type="checkbox" class="grp-cb" value="Clientele" checked>
+          <div class="ls-swatch" style="background:#7F77DD"></div>Clientele</label>
+        <label class="ls-row filter-row"><input type="checkbox" class="grp-cb" value="Special" checked>
+          <div class="ls-swatch" style="background:#888780"></div>Special</label>
       </div>
+
       <div class="ls-section">
         <div class="ls-title">Node outline — gender</div>
-        <div class="ls-row"><div class="ls-swatch" style="border:3px solid #E24B4A;background:transparent"></div>Male</div>
-        <div class="ls-row"><div class="ls-swatch" style="border:3px solid #378ADD;background:transparent"></div>Female</div>
-        <div class="ls-row"><div class="ls-swatch" style="border:3px solid #444;background:transparent"></div>Either</div>
+        <label class="ls-row filter-row"><input type="checkbox" class="gen-cb" value="Male" checked>
+          <div class="ls-swatch" style="border:3px solid #E24B4A;background:transparent"></div>Male</label>
+        <label class="ls-row filter-row"><input type="checkbox" class="gen-cb" value="Female" checked>
+          <div class="ls-swatch" style="border:3px solid #378ADD;background:transparent"></div>Female</label>
+        <label class="ls-row filter-row"><input type="checkbox" class="gen-cb" value="Either" checked>
+          <div class="ls-swatch" style="border:3px solid #444;background:transparent"></div>Either</label>
       </div>
+
       <div class="ls-section" style="margin-bottom:0">
         <div class="ls-title">Edge — relationship</div>
-        <div class="ls-row"><div class="ls-line" style="background:#c0175d"></div>Romantic</div>
-        <div class="ls-row"><div class="ls-line" style="background:#2d7a00"></div>Ally</div>
-        <div class="ls-row"><div class="ls-line" style="background:#111"></div>Enemy</div>
+        <label class="ls-row filter-row"><input type="checkbox" class="rel-cb" value="romance" checked>
+          <div class="ls-line" style="background:#c0175d"></div>Romantic</label>
+        <label class="ls-row filter-row"><input type="checkbox" class="rel-cb" value="ally" checked>
+          <div class="ls-line" style="background:#2d7a00"></div>Ally</label>
+        <label class="ls-row filter-row"><input type="checkbox" class="rel-cb" value="enemy" checked>
+          <div class="ls-line" style="background:#111"></div>Enemy</label>
       </div>
     </div>
 
@@ -822,7 +838,10 @@ const zoomG = svg.append("g");
 const zoomBehaviour = d3.zoom().scaleExtent([0.1,4]).on("zoom", e => zoomG.attr("transform", e.transform));
 svg.call(zoomBehaviour);
 
-let activeTiers = new Set([1,2,3,4,5]);
+let activeTiers   = new Set([1,2,3,4,5]);
+let activeGroups  = new Set(["Management","Staff","Clientele","Special"]);
+let activeGenders = new Set(["Male","Female","Either"]);
+let activeRelTypes= new Set(["romance","ally","enemy"]);
 let sim, linkSel, nodeSel, nameTagSel, currentNodes, currentEdges;
 let uiVisible = true, guestsVisible = true;
 let selectedNodeId = null;
@@ -842,9 +861,15 @@ function dedupEdges(arr) {
 
 function render() {
   zoomG.selectAll("*").remove();
-  const nodes = NODES_RAW.filter(n => n.tier===0 || activeTiers.has(n.tier)).map(n=>({...n}));
+  const nodes = NODES_RAW
+    .filter(n => (n.tier===0 || activeTiers.has(n.tier))
+              && activeGroups.has(n.group)
+              && activeGenders.has(n.gender))
+    .map(n=>({...n}));
   const nodeIds = new Set(nodes.map(n=>n.id));
-  const edges = dedupEdges(EDGES_RAW).filter(e=>nodeIds.has(e.source)&&nodeIds.has(e.target)).map(e=>({...e}));
+  const edges = dedupEdges(EDGES_RAW)
+    .filter(e => nodeIds.has(e.source) && nodeIds.has(e.target) && activeRelTypes.has(e.type))
+    .map(e=>({...e}));
   currentNodes = nodes; currentEdges = edges;
 
   const W = window.innerWidth, H = window.innerHeight;
@@ -1752,6 +1777,37 @@ document.querySelectorAll(".tier-cb").forEach(cb=>{
     render();
   });
 });
+
+document.querySelectorAll(".grp-cb").forEach(cb=>{
+  cb.addEventListener("change",()=>{
+    activeGroups=new Set([...document.querySelectorAll(".grp-cb:checked")].map(c=>c.value));
+    updateFilterRowFade();
+    render();
+  });
+});
+
+document.querySelectorAll(".gen-cb").forEach(cb=>{
+  cb.addEventListener("change",()=>{
+    activeGenders=new Set([...document.querySelectorAll(".gen-cb:checked")].map(c=>c.value));
+    updateFilterRowFade();
+    render();
+  });
+});
+
+document.querySelectorAll(".rel-cb").forEach(cb=>{
+  cb.addEventListener("change",()=>{
+    activeRelTypes=new Set([...document.querySelectorAll(".rel-cb:checked")].map(c=>c.value));
+    updateFilterRowFade();
+    render();
+  });
+});
+
+function updateFilterRowFade() {
+  document.querySelectorAll(".filter-row").forEach(row => {
+    const cb = row.querySelector("input[type='checkbox']");
+    row.classList.toggle("faded", cb && !cb.checked);
+  });
+}
 
 window.addEventListener("resize",()=>{ if(sim) sim.force("center",d3.forceCenter(window.innerWidth/2,window.innerHeight/2)).alpha(0.15).restart(); });
 
