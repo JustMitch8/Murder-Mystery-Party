@@ -998,6 +998,8 @@ function onClick(ev,d) {
 
 svg.on("click", ()=>{ if(selectedNodeId) closeDrawer(); });
 
+let lastActiveTab = "relationships";
+
 function openDrawer(d) {
   selectedNodeId = d.id;
   hoverSuppressed = true;
@@ -1018,8 +1020,11 @@ function openDrawer(d) {
   const invEl = document.getElementById("drawer-inv");
   invEl.textContent = inv ? `👤 Playing: ${inv}` : "";
 
-  // Activate relationships tab
-  activateTab("relationships", d);
+  // Restore last active tab (or relationships if not yet set)
+  document.querySelectorAll(".dtab").forEach(b => {
+    b.classList.toggle("active", b.dataset.tab === lastActiveTab);
+  });
+  activateTab(lastActiveTab, d);
 
   document.getElementById("node-drawer").classList.add("open");
 }
@@ -1034,15 +1039,16 @@ function closeDrawer() {
 
 document.getElementById("drawer-close").addEventListener("click", closeDrawer);
 
-// Tabs
+// Tabs — record selected tab for persistence
 document.querySelectorAll(".dtab").forEach(btn=>{
   btn.addEventListener("click",()=>{
     if(btn.classList.contains("soon")) return;
     document.querySelectorAll(".dtab").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
+    lastActiveTab = btn.dataset.tab;
     if(selectedNodeId){
       const node = currentNodes.find(n=>n.id===selectedNodeId);
-      if(node) activateTab(btn.dataset.tab, node);
+      if(node) activateTab(lastActiveTab, node);
     }
   });
 });
@@ -1239,6 +1245,19 @@ function renderInvitees() {
       `</div><button class="inv-remove" title="Remove">×</button>`;
 
     item.querySelector(".inv-remove").addEventListener("click",e=>{ e.stopPropagation(); removeInvitee(name); });
+
+    // Tap (not drag) navigates to assigned character
+    item.addEventListener("click", e => {
+      if (e.target.classList.contains("inv-remove")) return;
+      const assignedCharId = Object.keys(state.assignments).find(k => state.assignments[k] === name);
+      if (!assignedCharId || !currentNodes) return;
+      const node = currentNodes.find(n => n.id === assignedCharId);
+      if (!node) return;
+      // Pan graph to centre on this node
+      panToNode(node);
+      // Open drawer as if the node was clicked
+      openDrawer(node);
+    });
     setupDrag(item, name);
     wrap.appendChild(item);
   });
@@ -1357,6 +1376,21 @@ function setupDrag(el, name) {
 
   el.addEventListener("pointercancel", cancelAll);
 }
+function panToNode(node) {
+  if (!node || node.x == null || node.y == null) return;
+  const wrap = document.getElementById("graph-wrap");
+  const W = wrap.clientWidth;
+  const H = wrap.clientHeight;
+  // Get current scale so we keep the same zoom level
+  const current = d3.zoomTransform(svg.node());
+  const k = current.k;
+  // Target translation: node should appear at centre of graph area
+  const tx = W / 2 - node.x * k;
+  const ty = H / 2 - node.y * k;
+  svg.transition().duration(420)
+    .call(zoomBehaviour.transform, d3.zoomIdentity.translate(tx, ty).scale(k));
+}
+
 function moveGhost(x,y){ ghost.style.left=(x+12)+"px"; ghost.style.top=(y-10)+"px"; }
 function getNodeAtPoint(cx,cy) {
   if(!currentNodes) return null;
@@ -1702,8 +1736,14 @@ function deleteSnapshot(idx) {
 
 function openSnapshotPanel() {
   renderSnapshots();
+  // Save current zoom transform so opening the panel doesn't trigger a resize/zoom event
+  const currentTransform = zoomG.attr("transform");
   document.getElementById("snapshot-panel").classList.add("snap-open");
   document.getElementById("snap-backdrop").style.display = "block";
+  // Restore transform in next frame in case anything disturbed it
+  requestAnimationFrame(() => {
+    if (currentTransform) zoomG.attr("transform", currentTransform);
+  });
   document.getElementById("snap-name-input").focus();
 }
 function closeSnapshotPanel() {
