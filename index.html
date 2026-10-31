@@ -262,6 +262,15 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
 .link-romance { stroke: #c0175d; stroke-opacity: 0.85; fill: none; }
 .dimmed       { opacity: 0.06; }
 
+/* ── Snapshot panel ── */
+#snapshot-panel {
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.32,0.72,0,1);
+}
+#snapshot-panel.snap-open {
+  transform: translateX(0);
+}
+
 /* ── Snapshot cards ── */
 .snap-card {
   border: 1px solid #e0e0e0; border-radius: 8px;
@@ -287,8 +296,6 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
   padding: 5px 10px; font-size: 13px; cursor: pointer; line-height: 1;
 }
 .snap-btn-del:hover { color: #e04a4a; border-color: #e04a4a; }
-#snapshot-panel.snap-open { transform: translateX(0); }
-
 /* ════════════════════════════════════
    PHONE LAYOUT  (max-width: 600px)
    Tablet and above: unchanged
@@ -439,6 +446,7 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
   <button class="tb-btn" id="btn-export"><span class="btn-long">Export List</span><span class="btn-short" style="display:none">Export</span></button>
   <button class="tb-btn" id="btn-import"><span class="btn-long">Import List</span><span class="btn-short" style="display:none">Import</span></button>
   <button class="tb-btn" id="btn-snapshots"><span class="btn-long">Snapshots</span><span class="btn-short" style="display:none">💾</span></button>
+  <button class="tb-btn" id="btn-share"><span class="btn-long">Share URL</span><span class="btn-short" style="display:none">🔗</span></button>
 </div>
 
 <div id="app">
@@ -547,7 +555,6 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
   background:#fff; border-left:1px solid #ccc;
   box-shadow:-4px 0 24px rgba(0,0,0,0.12);
   z-index:11000; display:flex; flex-direction:column;
-  transform:translateX(100%); transition:transform 0.28s cubic-bezier(0.32,0.72,0,1);
 ">
   <div style="display:flex;align-items:center;padding:14px 16px 10px;border-bottom:1px solid #eee;flex-shrink:0;">
     <div style="font-size:14px;font-weight:700;color:#111;flex:1;">💾 Snapshots</div>
@@ -570,6 +577,25 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
   <div id="snap-empty" style="padding:30px 20px;text-align:center;font-size:12px;color:#bbb;line-height:1.6;">No snapshots saved yet.<br>Save your current setup above.</div>
 </div>
 <div id="snap-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:10999;"></div>
+
+<!-- Share URL modal -->
+<div id="share-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:12000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:min(520px,94vw);display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 40px rgba(0,0,0,0.25);">
+    <div style="display:flex;align-items:center;">
+      <div style="font-size:15px;font-weight:700;color:#111;flex:1;">🔗 Share this assignment</div>
+      <button id="share-close" style="background:none;border:none;font-size:22px;color:#aaa;cursor:pointer;line-height:1;padding:0;">×</button>
+    </div>
+    <div id="share-desc" style="font-size:12px;color:#555;line-height:1.6;"></div>
+    <input id="share-url" readonly style="width:100%;border:1px solid #ccc;border-radius:8px;padding:9px 12px;font-size:11px;font-family:'SF Mono',Consolas,monospace;color:#333;background:#fafafa;outline:none;word-break:break-all;">
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+      <button id="share-copy" style="background:#7F77DD;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:12px;font-weight:700;cursor:pointer;">Copy link</button>
+      <button id="share-cancel" style="background:#fff;border:1px solid #ccc;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;color:#333;">Close</button>
+    </div>
+    <div style="font-size:10px;color:#aaa;line-height:1.5;">
+      ⚠️ Anyone with this link can view the full assignment. The data is encoded in the URL itself — no server or account needed. To keep it private, only share with your guests.
+    </div>
+  </div>
+</div>
 
 <!-- Export/Import Modal -->
 <div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:10000;align-items:center;justify-content:center;">
@@ -1736,14 +1762,8 @@ function deleteSnapshot(idx) {
 
 function openSnapshotPanel() {
   renderSnapshots();
-  // Save current zoom transform so opening the panel doesn't trigger a resize/zoom event
-  const currentTransform = zoomG.attr("transform");
   document.getElementById("snapshot-panel").classList.add("snap-open");
   document.getElementById("snap-backdrop").style.display = "block";
-  // Restore transform in next frame in case anything disturbed it
-  requestAnimationFrame(() => {
-    if (currentTransform) zoomG.attr("transform", currentTransform);
-  });
   document.getElementById("snap-name-input").focus();
 }
 function closeSnapshotPanel() {
@@ -1777,6 +1797,115 @@ document.getElementById("snap-name-input").addEventListener("keydown", e => {
 document.getElementById("snap-close").addEventListener("click", closeSnapshotPanel);
 document.getElementById("snap-backdrop").addEventListener("click", closeSnapshotPanel);
 document.getElementById("btn-snapshots").addEventListener("click", openSnapshotPanel);
+
+// ═══════════════════════════════════════════════════════════
+//  SHARE URL  (state encoded in URL hash)
+// ═══════════════════════════════════════════════════════════
+
+// Compress + base64url encode a state object into a short string
+function encodeState(s) {
+  try {
+    const json = JSON.stringify({ invitees: s.invitees, assignments: s.assignments });
+    // Use CompressionStream if available (modern browsers), else fall back to raw base64
+    // We'll use a synchronous approach: just base64 the JSON (compression via browser API is async)
+    // For our small payloads (<2KB) raw base64 is fine
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    return encoded;
+  } catch(e) { return null; }
+}
+
+function decodeState(encoded) {
+  try {
+    const json = decodeURIComponent(escape(atob(encoded)));
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed.invitees)) return null;
+    if (typeof parsed.assignments !== 'object') return null;
+    return parsed;
+  } catch(e) { return null; }
+}
+
+function buildShareURL() {
+  const encoded = encodeState(state);
+  if (!encoded) return null;
+  const base = window.location.href.split('#')[0];
+  return base + '#share=' + encoded;
+}
+
+function loadFromURLHash() {
+  const hash = window.location.hash;
+  if (!hash || !hash.startsWith('#share=')) return false;
+  const encoded = hash.slice(7); // strip '#share='
+  const loaded = decodeState(encoded);
+  if (!loaded) return false;
+  // Only load if we have something meaningful
+  if (!loaded.invitees.length && !Object.keys(loaded.assignments).length) return false;
+
+  // If this device already has its own guest list, don't silently replace it
+  if (state.invitees.length > 0) {
+    const ok = confirm(
+      `This link contains a shared guest list (${loaded.invitees.length} guests).\n\n` +
+      `Your device already has ${state.invitees.length} guests saved. Replace them with the shared list?\n\n` +
+      `(Tip: save your current setup as a Snapshot first if you want to keep it.)`
+    );
+    if (!ok) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      return false;
+    }
+  }
+  state.invitees = loaded.invitees;
+  state.assignments = loaded.assignments;
+  saveState(); // persist to localStorage so further changes stick
+  // Clear the hash so refreshing doesn't re-load the URL state over any edits
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  return true;
+}
+
+// Share modal
+document.getElementById("btn-share").addEventListener("click", () => {
+  const url = buildShareURL();
+  const overlay = document.getElementById("share-overlay");
+  const urlInput = document.getElementById("share-url");
+  const desc = document.getElementById("share-desc");
+
+  if (!url) {
+    alert("Nothing to share yet — add some guests first.");
+    return;
+  }
+
+  const assignedCount = Object.keys(state.assignments).length;
+  const total = state.invitees.length;
+  desc.textContent = `This link encodes your current guest list (${total} guest${total!==1?'s':''}, ${assignedCount} assigned). Send it to anyone — opening it will instantly show the full populated graph.`;
+  urlInput.value = url;
+  overlay.style.display = "flex";
+  setTimeout(() => urlInput.select(), 80);
+});
+
+document.getElementById("share-close").addEventListener("click", () => {
+  document.getElementById("share-overlay").style.display = "none";
+});
+document.getElementById("share-cancel").addEventListener("click", () => {
+  document.getElementById("share-overlay").style.display = "none";
+});
+document.getElementById("share-overlay").addEventListener("click", e => {
+  if (e.target === document.getElementById("share-overlay"))
+    document.getElementById("share-overlay").style.display = "none";
+});
+
+document.getElementById("share-copy").addEventListener("click", () => {
+  const url = document.getElementById("share-url").value;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById("share-copy");
+    btn.textContent = "Copied ✓"; btn.style.background = "#2d7a00";
+    setTimeout(() => { btn.textContent = "Copy link"; btn.style.background = ""; }, 2200);
+  }).catch(() => {
+    // iOS fallback
+    document.getElementById("share-url").select();
+    document.execCommand("copy");
+    const btn = document.getElementById("share-copy");
+    btn.textContent = "Copied ✓"; btn.style.background = "#2d7a00";
+    setTimeout(() => { btn.textContent = "Copy link"; btn.style.background = ""; }, 2200);
+  });
+});
 
 // ═══════════════════════════════════════════════════════════
 //  PHONE ADAPTATIONS
@@ -1897,6 +2026,7 @@ window.addEventListener("resize",()=>{ if(sim) sim.force("center",d3.forceCenter
 // ═══════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════
+loadFromURLHash();
 render();
 renderInvitees();
 </script>
