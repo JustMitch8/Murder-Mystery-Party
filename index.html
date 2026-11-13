@@ -321,6 +321,68 @@ svg#graph { width: 100%; height: 100%; background: #fff; display: block; }
 
 .app-ver { font-size: 9px; color: #bbb; margin-top: 10px; }
 
+/* ── Cleanup: menu, filters sheet, touch targets, safe areas ── */
+body { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+#toolbar { gap: 8px; }
+#toolbar h1 .t-short { display: none; }
+#btn-menu { display: none; }
+#tb-actions { display: contents; }
+#filters-sheet { display: contents; }
+#filters-chip { display: none; }
+#filters-chip .dot { display: none; width: 8px; height: 8px; border-radius: 50%; background: #c0175d; }
+.panel { max-height: calc(100% - 24px); overflow-y: auto; }
+#hint-bar { max-width: calc(100% - 24px); width: max-content; white-space: normal; text-align: center; }
+#inv-add-row input { min-width: 0; }
+#snap-name-input { min-width: 0 !important; }
+#dlg-input { width: 100%; box-sizing: border-box; }
+#share-url { min-width: 0; box-sizing: border-box; }
+#share-overlay > div, #dlg-overlay > div { max-height: 92vh; overflow-y: auto; max-width: 100%; }
+.c-short { display: none; }
+
+@media (pointer: coarse) {
+  .tb-btn { min-height: 38px; padding: 8px 14px; }
+  .filter-row, .tier-row { min-height: 34px; }
+  .filter-row input[type="checkbox"], .tier-row input[type="checkbox"] { width: 20px; height: 20px; }
+  #drawer-close, #snap-close, #modal-close, #share-close { padding: 6px 12px !important; font-size: 28px !important; }
+  .dtab { min-height: 42px; }
+  .snap-btn-load, .snap-btn-overwrite, .snap-btn-del { min-height: 38px; }
+  #inv-add-btn { min-width: 46px; }
+  #search-clear { padding: 8px 12px; }
+  .inv-remove { min-width: 40px; min-height: 36px; padding: 8px 10px !important; margin: -8px -8px -8px 0; display: flex; align-items: center; justify-content: center; }
+}
+
+/* Small screens (phones, and phones turned sideways): filters live behind a chip */
+@media (max-width: 600px), (max-height: 520px) {
+  #filters-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    position: absolute; top: 8px; left: 8px; z-index: 56;
+    background: #fff; border: 1px solid #bbb; border-radius: 999px;
+    padding: 8px 14px; min-height: 36px; font-size: 12px; font-weight: 700; color: #222;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: pointer; font-family: inherit;
+  }
+  #filters-chip.hidden { display: none !important; }
+  #filters-sheet {
+    display: none; position: absolute; top: 52px; left: 8px; right: 8px;
+    max-height: calc(100% - 64px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+    z-index: 55; flex-direction: column; gap: 8px;
+  }
+  #filters-sheet.open { display: flex; }
+  #filters-sheet .panel { position: static; width: 100%; max-width: none; min-width: 0; max-height: none; overflow: visible; }
+  #legend { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
+  #legend h3, #legend .app-ver { grid-column: 1 / -1; }
+  #filters-sheet .tier-row, #filters-sheet .filter-row { min-height: 30px; margin-bottom: 1px; }
+  #filters-sheet .panel { padding: 12px 14px; }
+}
+
+@media (max-height: 520px) {
+  #toolbar { padding-top: 4px; padding-bottom: 4px; }
+  #search-row { padding-top: 4px; padding-bottom: 4px; }
+  #search-input { padding-top: 5px; padding-bottom: 5px; }
+  .tb-btn { min-height: 32px; padding-top: 5px; padding-bottom: 5px; }
+  #node-drawer { height: 58%; }
+  #modal-text { min-height: 100px !important; }
+}
+
 /* ── Player mode: hide gender + tier UI ── */
 body.player-mode #tier-filter,
 body.player-mode .gender-ui { display: none !important; }
@@ -365,22 +427,6 @@ body.player-mode .gender-ui { display: none !important; }
 ═══════════════════════════════════════ */
 @media (max-width: 600px) {
 
-  /* ── Toolbar: icon-only buttons, title stays ── */
-  #toolbar { padding: 6px 8px; gap: 5px; flex-wrap: nowrap; }
-  #toolbar h1 { font-size: 12px; }
-  .tb-btn {
-    padding: 6px 8px; font-size: 11px;
-    /* Hide text, show icon set via data-icon */
-  }
-  /* Hide full button labels, show short ones */
-  .tb-btn .btn-long { display: none; }
-  .tb-btn .btn-short { display: inline; }
-
-  /* ── Overlay panels: hidden by default on phone,
-        toggled via Hide UI (they're inside graph-wrap
-        so they already absolute-position fine) ── */
-  #tier-filter { top: 8px; left: 8px; padding: 10px 12px; max-width: calc(100vw - 16px); }
-  #legend { top: 8px; right: 8px; padding: 10px 12px; min-width: 0; max-width: calc(50vw); }
   #hint-bar { display: none; } /* too much clutter on phone */
 
   /* ── Invitee panel: bottom sheet on phone ── */
@@ -392,7 +438,7 @@ body.player-mode .gender-ui { display: none !important; }
     border-top: 1px solid var(--panel-border);
     flex-direction: column;
     /* default closed (collapsed) on phone */
-    height: 44px;       /* just the header bar visible */
+    height: 46px;       /* just the header bar visible */
     flex-shrink: 0;
     transition: height 0.28s cubic-bezier(0.32,0.72,0,1);
     overflow: hidden;
@@ -408,7 +454,7 @@ body.player-mode .gender-ui { display: none !important; }
     opacity: 1;
     pointer-events: auto;
     position: relative;
-    height: 44px;
+    height: 46px;
   }
 
   /* Phone-only collapsed header tap target */
@@ -422,6 +468,7 @@ body.player-mode .gender-ui { display: none !important; }
     display: flex;
     align-items: center;
     padding: 0 14px;
+    margin-bottom: 0;
     height: 44px;
     gap: 8px;
     cursor: pointer;
@@ -497,20 +544,63 @@ body.player-mode .gender-ui { display: none !important; }
   #snapshot-panel.snap-open { transform: translateY(0) !important; }
   #snap-backdrop { display: none; }
 }
+
+/* ── Phone cleanup (kept last so it wins) ── */
+/* Compact toolbar menu: phones, and phones turned sideways */
+@media (max-width: 600px), (max-height: 520px) {
+  #toolbar { position: relative; z-index: 600; flex-wrap: nowrap; padding: 6px 10px; gap: 8px; align-items: center; }
+  #btn-menu { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; min-height: 38px; padding: 6px 14px; }
+  #btn-menu[aria-expanded="true"] { background: #111; color: #fff; border-color: #111; }
+  #tb-actions {
+    display: none; position: absolute; top: calc(100% + 4px); right: 8px;
+    width: min(300px, calc(100vw - 16px)); flex-direction: column; gap: 2px; padding: 6px;
+    background: #fff; border: 1px solid #ccc; border-radius: 12px;
+    box-shadow: 0 10px 32px rgba(0,0,0,0.18); max-height: calc(100vh - 120px); overflow-y: auto;
+  }
+  #tb-actions.open { display: flex; }
+  #tb-actions .tb-btn {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    min-height: 46px; padding: 10px 12px; font-size: 14px;
+    border: none; background: transparent; border-radius: 8px;
+  }
+  #tb-actions .tb-btn::before { content: attr(data-icon); width: 22px; text-align: center; font-size: 16px; flex-shrink: 0; }
+  #tb-actions .tb-btn:active { background: #f0f0f0; }
+  #tb-actions .btn-short { display: none !important; }
+
+}
+
+@media (max-width: 600px) {
+  #toolbar h1 { font-size: 13px; }
+  #toolbar h1 .t-long { display: none; }
+  #toolbar h1 .t-short { display: inline; }
+
+  #drawer-tabs { padding: 0 6px; scrollbar-width: none; }
+  #drawer-tabs::-webkit-scrollbar { display: none; }
+  .dtab { flex-shrink: 0; padding: 8px 9px; font-size: 11px; }
+  .dtab .t-extra { display: none; }
+  #inv-counts { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 360px) {
+  .c-long { display: none; }
+  .c-short { display: inline; }
+}
 </style>
 </head>
 <body>
 
 <div id="toolbar">
-  <h1>🎷 A Speakeasy Murder — Character Map</h1>
-  <button class="tb-btn" id="btn-ui"><span class="btn-long">Hide UI</span><span class="btn-short" style="display:none">UI</span></button>
-  <button class="tb-btn" id="btn-guests"><span class="btn-long">Hide Guests</span><span class="btn-short" style="display:none">Guests</span></button>
-  <button class="tb-btn" id="btn-clear"><span class="btn-long">Clear Assignments</span><span class="btn-short" style="display:none">Clear</span></button>
-  <button class="tb-btn" id="btn-export"><span class="btn-long">Export List</span><span class="btn-short" style="display:none">Export</span></button>
-  <button class="tb-btn" id="btn-import"><span class="btn-long">Import List</span><span class="btn-short" style="display:none">Import</span></button>
-  <button class="tb-btn" id="btn-snapshots"><span class="btn-long">Snapshots</span><span class="btn-short" style="display:none">💾</span></button>
-  <button class="tb-btn" id="btn-share"><span class="btn-long">Share URL</span><span class="btn-short" style="display:none">🔗</span></button>
-  <button class="tb-btn" id="btn-mode"><span class="btn-long">Player view</span><span class="btn-short" style="display:none">👁</span></button>
+  <h1><span class="t-long">🎷 A Speakeasy Murder — Character Map</span><span class="t-short">🎷 Speakeasy Map</span></h1>
+  <button class="tb-btn" id="btn-menu" aria-haspopup="true" aria-expanded="false">☰ <span>Menu</span></button>
+  <div id="tb-actions">
+    <button class="tb-btn" id="btn-ui" data-icon="🖥"><span class="btn-long">Hide UI</span><span class="btn-short" style="display:none">UI</span></button>
+    <button class="tb-btn" id="btn-guests" data-icon="👥"><span class="btn-long">Hide Guests</span><span class="btn-short" style="display:none">Guests</span></button>
+    <button class="tb-btn" id="btn-clear" data-icon="↺"><span class="btn-long">Clear Assignments</span><span class="btn-short" style="display:none">Clear</span></button>
+    <button class="tb-btn" id="btn-export" data-icon="📤"><span class="btn-long">Export List</span><span class="btn-short" style="display:none">Export</span></button>
+    <button class="tb-btn" id="btn-import" data-icon="📥"><span class="btn-long">Import List</span><span class="btn-short" style="display:none">Import</span></button>
+    <button class="tb-btn" id="btn-snapshots" data-icon="💾"><span class="btn-long">Snapshots</span><span class="btn-short" style="display:none">💾</span></button>
+    <button class="tb-btn" id="btn-share" data-icon="🔗"><span class="btn-long">Share URL</span><span class="btn-short" style="display:none">🔗</span></button>
+    <button class="tb-btn" id="btn-mode" data-icon="👁"><span class="btn-long">Player view</span><span class="btn-short" style="display:none">👁</span></button>
+  </div>
 </div>
 
 <div id="search-row">
@@ -527,6 +617,8 @@ body.player-mode .gender-ui { display: none !important; }
     <svg id="graph"></svg>
 
     <!-- Overlay panels -->
+    <button id="filters-chip" aria-expanded="false">⚙ Filters<span class="dot"></span></button>
+    <div id="filters-sheet">
     <div class="panel" id="tier-filter">
       <h3>Guest count tier</h3>
       <label class="tier-row"><input type="checkbox" class="tier-cb" value="1" checked> Tier 1 — Core 15</label>
@@ -570,8 +662,9 @@ body.player-mode .gender-ui { display: none !important; }
         <label class="ls-row filter-row"><input type="checkbox" class="rel-cb" value="enemy" checked>
           <div class="ls-line" style="background:#111"></div>Enemy</label>
       </div>
-      <div class="app-ver">Version 2026.11.04-2</div>
+      <div class="app-ver">Version 2026.11.05-1</div>
     </div>
+    </div><!-- /filters-sheet -->
 
     <div id="hint-bar">Scroll to zoom &nbsp;·&nbsp; Drag to pan &nbsp;·&nbsp; Hover = highlight &nbsp;·&nbsp; Click = details &nbsp;·&nbsp; Drag guest → node to assign</div>
 
@@ -592,7 +685,7 @@ body.player-mode .gender-ui { display: none !important; }
         <button class="dtab" data-tab="goals">Goals</button>
         <button class="dtab" data-tab="bio">Full Bio</button>
         <button class="dtab" data-tab="abilities">Abilities</button>
-        <button class="dtab" data-tab="secrets">Secrets &amp; Clues</button>
+        <button class="dtab" data-tab="secrets">Secrets<span class="t-extra"> &amp; Clues</span></button>
       </div>
       <div id="drawer-body"></div>
     </div>
@@ -1129,6 +1222,7 @@ let lastActiveTab = "relationships";
 
 function openDrawer(d) {
   selectedNodeId = d.id;
+  closeFiltersSheet();
   hoverSuppressed = true;
 
   // Highlight connected nodes
@@ -1341,8 +1435,9 @@ function escHtml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
 function updateCounts() {
   const total = state.invitees.length;
   const assigned = state.invitees.filter(n=>Object.values(state.assignments).includes(n)).length;
-  document.getElementById("inv-counts").textContent =
-    total===0 ? "" : `${total} total · ${assigned} assigned · ${total-assigned} free`;
+  document.getElementById("inv-counts").innerHTML = total===0 ? "" :
+    `<span class="c-long">${total} total · ${assigned} assigned · ${total-assigned} free</span>` +
+    `<span class="c-short">${total} · ${assigned} ✓ · ${total-assigned} free</span>`;
 }
 
 function renderInvitees() {
@@ -1549,7 +1644,8 @@ document.getElementById("inv-input").addEventListener("keydown",e=>{
 // ═══════════════════════════════════════════════════════════
 document.getElementById("btn-ui").addEventListener("click",()=>{
   uiVisible=!uiVisible;
-  ["legend","tier-filter","hint-bar","search-row"].forEach(id=>document.getElementById(id).classList.toggle("hidden",!uiVisible));
+  ["legend","tier-filter","hint-bar","search-row","filters-chip"].forEach(id=>document.getElementById(id).classList.toggle("hidden",!uiVisible));
+  if(!uiVisible) closeFiltersSheet();
   document.getElementById("btn-ui").querySelector(".btn-long").textContent=uiVisible?"Hide UI":"Show UI";
   document.getElementById("btn-ui").querySelector(".btn-short").textContent=uiVisible?"UI":"UI ✓";
 });
@@ -2139,6 +2235,7 @@ function applyMode() {
     document.querySelectorAll(".tier-cb, .gen-cb").forEach(cb => { cb.checked = true; });
     updateFilterRowFade();
   }
+  updateFiltersChip();
   const btn = document.getElementById("btn-mode");
   btn.querySelector(".btn-long").textContent  = playerMode ? "Organiser mode" : "Player view";
   btn.querySelector(".btn-short").textContent = playerMode ? "🔓" : "👁";
@@ -2338,9 +2435,9 @@ const IS_PHONE = () => window.innerWidth <= 600;
 
 // Show short button labels on phone
 function applyPhoneLabels() {
-  const phone = IS_PHONE();
-  document.querySelectorAll(".btn-long").forEach(el => el.style.display = phone ? "none" : "");
-  document.querySelectorAll(".btn-short").forEach(el => el.style.display = phone ? "inline" : "none");
+  // Phones now use a labelled menu, so full labels are always shown (short ones are unused)
+  document.querySelectorAll(".btn-long").forEach(el => el.style.display = "");
+  document.querySelectorAll(".btn-short").forEach(el => el.style.display = "none");
 }
 applyPhoneLabels();
 window.addEventListener("resize", applyPhoneLabels);
@@ -2450,6 +2547,50 @@ window.addEventListener("resize",()=>{ if(sim) sim.force("center",d3.forceCenter
 // ═══════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  TOOLBAR MENU + FILTERS SHEET (small screens)
+// ═══════════════════════════════════════════════════════════
+function closeFiltersSheet() {
+  document.getElementById("filters-sheet").classList.remove("open");
+  document.getElementById("filters-chip").setAttribute("aria-expanded", "false");
+}
+function updateFiltersChip() {
+  const changed = document.querySelectorAll("#filters-sheet input[type=checkbox]:not(:checked)").length > 0;
+  document.querySelector("#filters-chip .dot").style.display = changed ? "inline-block" : "none";
+}
+(function () {
+  const chip = document.getElementById("filters-chip");
+  const sheet = document.getElementById("filters-sheet");
+  chip.addEventListener("click", e => {
+    e.stopPropagation();
+    const open = !sheet.classList.contains("open");
+    sheet.classList.toggle("open", open);
+    chip.setAttribute("aria-expanded", open);
+  });
+  document.getElementById("graph").addEventListener("click", closeFiltersSheet);
+  sheet.querySelectorAll("input[type=checkbox]").forEach(cb => cb.addEventListener("change", updateFiltersChip));
+
+  const btn = document.getElementById("btn-menu");
+  const menu = document.getElementById("tb-actions");
+  const setMenu = open => { menu.classList.toggle("open", open); btn.setAttribute("aria-expanded", open); };
+  btn.addEventListener("click", e => { e.stopPropagation(); setMenu(!menu.classList.contains("open")); });
+  menu.addEventListener("click", e => { if (e.target.closest(".tb-btn")) setTimeout(() => setMenu(false), 0); });
+  document.addEventListener("pointerdown", e => { if (!menu.contains(e.target) && !btn.contains(e.target)) setMenu(false); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") setMenu(false); });
+  window.addEventListener("resize", () => { if (!IS_PHONE()) setMenu(false); });
+})();
+
+function syncGuestsLabel() {
+  const panel = document.getElementById("invitee-panel");
+  const label = document.getElementById("btn-guests").querySelector(".btn-long");
+  label.textContent = IS_PHONE()
+    ? (panel.classList.contains("phone-open") ? "Close guest list" : "Open guest list")
+    : (guestsVisible ? "Hide Guests" : "Show Guests");
+}
+new MutationObserver(syncGuestsLabel).observe(document.getElementById("invitee-panel"), { attributes: true, attributeFilter: ["class"] });
+window.addEventListener("resize", syncGuestsLabel);
+syncGuestsLabel();
+
 loadMode();
 const shareLink = parseShareLink();
 let shareApplied = false;
